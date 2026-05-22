@@ -14,7 +14,6 @@ const TECNICOS = [
 const FLOW_UNITS = ["ml/min", "ml/h", "l/min", "l/h"];
 const TIME_UNITS = ["s", "min"];
 
-// Sector colors
 const SECTOR_STYLES = {
   mp3:  { bg: "#E8F5E9", border: "#4CAF50", text: "#1B5E20", icon: "🧪" },
   clar: { bg: "#E3F2FD", border: "#2196F3", text: "#0D47A1", icon: "💧" },
@@ -30,6 +29,7 @@ const SECTORES = [
       {
         n: 1, id: "ecowash", label: "Ecowash", accion: "I,L",
         epp: "Linterna, aire comprimido, línea de agua, careta, guantes de nitrilo",
+        lavadosFields: true,
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de Ecowash: bombas, sector de tablero y sector de bomba de alta presión" },
           { s: 2, f: 1, desc: "Verificar lectura y registrar presión en manómetros de agua 1,2,3,4,N, manómetros de vapor 1 y 2 y temperatura de salida en termómetro" },
@@ -75,7 +75,6 @@ const SECTORES = [
             desc: "Verificar y registrar flujo seteado, nivel de cada IBC, variación esperada y condición visual del producto",
             tiempos: true,
             productos_tiempo: ["Ecopart PU 40", "Ecopart PU 12", "Ecoenz C PU 40", "Ecoenz RF 200 PU 12", "Ecoenz RF 200 PU 40", "Eco PC 105 PU 12", "Eco PC 105 PU 40"],
-            desc_extra: "Incluye registro de tiempos de dosificación sala azul (Eco PC 105) y costado cadena PRP3",
           },
         ],
         consolidado: true,
@@ -105,7 +104,7 @@ const SECTORES = [
         subtareas: [
           { s: 1, f: 2, desc: "Inspeccionar regaderas de acondicionamiento de vestimentas tela (1) y paño (2): sprayeado correcto, cobertura adecuada en cada tobera (22:00 y 5:00)" },
           { s: 2, f: 2, desc: "Inspeccionar correcto funcionamiento de RAP Tela y Paño: oscilación, flujo laminar del chorro aguja y registrar presión de trabajo" },
-          { s: 3, f: 1, desc: "Registrar valores de vacío en vacuómetros de los sifones y de la prensa" },
+          { s: 3, f: 1, desc: "Registrar valores de vacío en vacuómetros de los sifones y de la prensa", vacios: true },
         ],
       },
       {
@@ -315,34 +314,39 @@ const SECTORES = [
   },
 ];
 
+// ── LILA 2 — solo equipos 3 y 12 + todas las subtareas con f ≥ 2 ──────────────
+function getSectoresLila2() {
+  return SECTORES
+    .map(sec => ({
+      ...sec,
+      equipos: sec.equipos
+        .filter(eq => eq.n === 3 || eq.n === 12 || eq.subtareas.some(st => st.f >= 2))
+        .map(eq => {
+          if (eq.n === 3 || eq.n === 12) return eq;
+          return { ...eq, subtareas: eq.subtareas.filter(st => st.f >= 2) };
+        }),
+    }))
+    .filter(sec => sec.equipos.length > 0);
+}
+
 // ── GOOGLE SHEETS ─────────────────────────────────────────────────────────────
-// Pega aquí la URL de tu Apps Script Web App (ver instrucciones):
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4JKZ7ry6TqNM3vGRLu7kjdPVN3Ck0Pss0WbWYTFutVVow2PhByCLVbZjuV0CbdY8S/exec";
+const APPS_SCRIPT_URL = "";
+
 async function sendToSheets(reg) {
   if (!APPS_SCRIPT_URL) return;
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      body: JSON.stringify(reg),
-    });
+    await fetch(APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(reg) });
   } catch (_) {}
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-
-function todayStr() {
-  return new Date().toISOString().split("T")[0];
-}
-
+function todayStr() { return new Date().toISOString().split("T")[0]; }
 function fmtDate(d) {
   if (!d) return "";
-  const dt = new Date(d + "T12:00:00");
-  return dt.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(d + "T12:00:00").toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 // ── STYLES ────────────────────────────────────────────────────────────────────
-
 const S = {
   app: { minHeight: "100vh", background: "#F5F7FA", fontFamily: "'DM Sans', sans-serif", fontSize: 15 },
   header: { background: "#1A2744", color: "#fff", padding: "14px 16px 10px", position: "sticky", top: 0, zIndex: 100 },
@@ -351,9 +355,9 @@ const S = {
   tabBar: { display: "flex", background: "#fff", borderBottom: "1.5px solid #E2E8F0", position: "sticky", top: 58, zIndex: 99 },
   tab: (active) => ({
     flex: 1, padding: "11px 4px", textAlign: "center", fontSize: 12, fontWeight: active ? 700 : 500,
-    color: active ? "#1A2744" : "#94A3B8", borderBottom: active ? "2.5px solid #1A2744" : "2.5px solid transparent",
-    cursor: "pointer", background: "none", border: "none",
-    letterSpacing: 0.2,
+    color: active ? "#1A2744" : "#94A3B8",
+    borderBottom: active ? "2.5px solid #1A2744" : "2.5px solid transparent",
+    cursor: "pointer", background: "none", border: "none", letterSpacing: 0.2,
   }),
   page: { padding: "12px 12px 80px" },
   card: { background: "#fff", borderRadius: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", marginBottom: 12, overflow: "hidden" },
@@ -379,25 +383,53 @@ const S = {
   }),
   fieldRow: { marginBottom: 8 },
   fieldLabel: { fontSize: 11, color: "#64748B", marginBottom: 4, display: "block", fontWeight: 500 },
-  input: { width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 14, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit" },
+  input: { width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 14, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit", boxSizing: "border-box" },
   select: { width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 14, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit" },
-  textarea: { width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 13, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit", resize: "vertical", minHeight: 56 },
+  textarea: { width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 13, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit", resize: "vertical", minHeight: 56, boxSizing: "border-box" },
+  // Probeta
   probetaBox: { background: "#FFFBEB", border: "1.5px solid #FCD34D", borderRadius: 10, padding: 10, marginBottom: 8 },
-  probetaTitle: { fontSize: 11, fontWeight: 700, color: "#92400E", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 },
+  probetaTitle: { fontSize: 11, fontWeight: 700, color: "#92400E", marginBottom: 8 },
   prodRow: { background: "#fff", borderRadius: 8, padding: "8px 10px", marginBottom: 6, border: "1px solid #FEF3C7" },
   prodName: { fontSize: 12, fontWeight: 600, color: "#78350F", marginBottom: 6 },
   inlineRow: { display: "flex", gap: 6 },
   inlineField: { flex: 1 },
   unitSel: { width: 80, border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "7px 6px", fontSize: 13, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit" },
+  // Tiempos
   tiempoBox: { background: "#F0F9FF", border: "1.5px solid #7DD3FC", borderRadius: 10, padding: 10, marginBottom: 8 },
   tiempoTitle: { fontSize: 11, fontWeight: 700, color: "#075985", marginBottom: 8 },
-  progBar: () => ({ height: 4, borderRadius: 2, background: "#E2E8F0", overflow: "hidden", position: "relative" }),
+  // Lavados (Ecowash Paño/Tela)
+  lavadosBox: { background: "#F0FDF4", border: "1.5px solid #86EFAC", borderRadius: 10, padding: 12, margin: "0 14px 12px" },
+  lavadosTitle: { fontSize: 11, fontWeight: 700, color: "#166534", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 },
+  lavadosSec: { background: "#fff", borderRadius: 8, padding: 10, marginBottom: 8, border: "1px solid #D1FAE5" },
+  lavadosSecTitle: { fontSize: 12, fontWeight: 700, color: "#15803D", marginBottom: 8 },
+  // Vacíos
+  vaciosBox: { background: "#FFF7ED", border: "1.5px solid #FED7AA", borderRadius: 10, padding: 10, marginBottom: 8 },
+  vaciosNote: { fontSize: 11, fontWeight: 700, color: "#C2410C", background: "#FFEDD5", borderRadius: 6, padding: "5px 10px", marginBottom: 10, display: "block" },
+  // Progress
+  progBar: () => ({ height: 4, borderRadius: 2, background: "#E2E8F0", overflow: "hidden" }),
   progFill: (pct) => ({ height: "100%", width: `${pct}%`, background: pct === 100 ? "#22C55E" : "#3B82F6", borderRadius: 2, transition: "width 0.3s" }),
+  // Badge / Button
   badge: (color) => ({ display: "inline-block", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: color.bg, color: color.text }),
   primaryBtn: { width: "100%", padding: "14px", borderRadius: 12, background: "#1A2744", color: "#fff", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: 0.2 },
+  // Version selector
+  versionBtn: (active) => ({
+    flex: 1, padding: "11px 8px", borderRadius: 10, fontSize: 13, fontWeight: 700, textAlign: "center",
+    border: `2px solid ${active ? "#1A2744" : "#E2E8F0"}`,
+    background: active ? "#1A2744" : "#F8FAFC",
+    color: active ? "#fff" : "#94A3B8",
+    cursor: "pointer",
+  }),
+  versionBadge: (v) => ({
+    display: "inline-block", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+    background: v === "lila2" ? "#FEF3C7" : "#EFF6FF",
+    color: v === "lila2" ? "#92400E" : "#1D4ED8",
+    marginLeft: 6,
+  }),
+  // Metrics
   metricCard: (color) => ({ background: color, borderRadius: 12, padding: "14px 12px", textAlign: "center" }),
   metricVal: { fontSize: 28, fontWeight: 800, color: "#1E293B" },
   metricLbl: { fontSize: 11, color: "#64748B", marginTop: 2 },
+  // Toast / History
   toast: (show) => ({
     position: "fixed", bottom: 20, left: "50%", transform: `translateX(-50%) translateY(${show ? 0 : 80}px)`,
     background: "#1A2744", color: "#fff", padding: "10px 20px", borderRadius: 20, fontSize: 13, fontWeight: 600,
@@ -407,10 +439,10 @@ const S = {
 };
 
 const STATE_COLORS = {
-  "Hecho": { bg: "#DCFCE7", border: "#4ADE80", text: "#15803D" },
-  "No OK": { bg: "#FEE2E2", border: "#F87171", text: "#B91C1C" },
-  "Pendiente": { bg: "#FEF9C3", border: "#FBBF24", text: "#92400E" },
-  "N/A": { bg: "#F1F5F9", border: "#CBD5E1", text: "#64748B" },
+  "Hecho":    { bg: "#DCFCE7", border: "#4ADE80", text: "#15803D" },
+  "No OK":    { bg: "#FEE2E2", border: "#F87171", text: "#B91C1C" },
+  "Pendiente":{ bg: "#FEF9C3", border: "#FBBF24", text: "#92400E" },
+  "N/A":      { bg: "#F1F5F9", border: "#CBD5E1", text: "#64748B" },
 };
 const STATE_LABELS = ["Hecho", "No OK", "Pendiente", "N/A"];
 
@@ -442,8 +474,7 @@ function ProbetaFields({ productos, vals, onChange }) {
               </div>
               <div>
                 <label style={S.fieldLabel}>Unidad</label>
-                <select style={{ ...S.unitSel }}
-                  value={v.unidad}
+                <select style={S.unitSel} value={v.unidad}
                   onChange={e => onChange(prod, { ...v, unidad: e.target.value })}>
                   {FLOW_UNITS.map(u => <option key={u}>{u}</option>)}
                 </select>
@@ -473,8 +504,7 @@ function TiempoFields({ productos, vals, onChange }) {
                   onChange={e => onChange(prod, { ...v, valor: e.target.value })} />
               </div>
               <div>
-                <select style={{ ...S.unitSel }}
-                  value={v.unidad}
+                <select style={S.unitSel} value={v.unidad}
                   onChange={e => onChange(prod, { ...v, unidad: e.target.value })}>
                   {TIME_UNITS.map(u => <option key={u}>{u}</option>)}
                 </select>
@@ -487,9 +517,96 @@ function TiempoFields({ productos, vals, onChange }) {
   );
 }
 
+// Campos Paño / Tela para Ecowash (solo LILA 1)
+function LavadosFields({ vals, onChange }) {
+  const secciones = [
+    { key: "paño", label: "1 Paño" },
+    { key: "tela", label: "2 Tela" },
+  ];
+  const empty = { n_lavados: "", flujo_alc: "", flujo_ac: "", t_alc: "", t_ac: "" };
+
+  return (
+    <div style={S.lavadosBox}>
+      <div style={S.lavadosTitle}>🧺 Datos de lavado por vestimenta</div>
+      {secciones.map(({ key, label }) => {
+        const v = (vals || {})[key] || empty;
+        return (
+          <div key={key} style={S.lavadosSec}>
+            <div style={S.lavadosSecTitle}>{label}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
+              <div>
+                <label style={S.fieldLabel}>N° Lavados</label>
+                <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" placeholder="0"
+                  value={v.n_lavados}
+                  onChange={e => onChange(key, { ...v, n_lavados: e.target.value })} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                <div>
+                  <label style={S.fieldLabel}>Flujo Alcalino</label>
+                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                    value={v.flujo_alc}
+                    onChange={e => onChange(key, { ...v, flujo_alc: e.target.value })} />
+                </div>
+                <div>
+                  <label style={S.fieldLabel}>Flujo Ácido</label>
+                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                    value={v.flujo_ac}
+                    onChange={e => onChange(key, { ...v, flujo_ac: e.target.value })} />
+                </div>
+                <div>
+                  <label style={S.fieldLabel}>Tiempo Alcalino</label>
+                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                    value={v.t_alc}
+                    onChange={e => onChange(key, { ...v, t_alc: e.target.value })} />
+                </div>
+                <div>
+                  <label style={S.fieldLabel}>Tiempo Ácido</label>
+                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                    value={v.t_ac}
+                    onChange={e => onChange(key, { ...v, t_ac: e.target.value })} />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Campos de vacío para equipo 5, subtarea 3
+function VaciosFields({ vals, onChange }) {
+  const v = vals || { sifon1: "", sifon2: "", prensa: "" };
+  return (
+    <div style={S.vaciosBox}>
+      <span style={S.vaciosNote}>⚠️ Valores deben ser obtenidos de terreno</span>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        <div>
+          <label style={S.fieldLabel}>Vacío Sifón 1</label>
+          <input style={{ ...S.input, fontSize: 13 }} type="number" step="0.1" placeholder="—"
+            value={v.sifon1}
+            onChange={e => onChange({ ...v, sifon1: e.target.value })} />
+        </div>
+        <div>
+          <label style={S.fieldLabel}>Vacío Sifón 2</label>
+          <input style={{ ...S.input, fontSize: 13 }} type="number" step="0.1" placeholder="—"
+            value={v.sifon2}
+            onChange={e => onChange({ ...v, sifon2: e.target.value })} />
+        </div>
+        <div>
+          <label style={S.fieldLabel}>Vacío Prensa</label>
+          <input style={{ ...S.input, fontSize: 13 }} type="number" step="0.1" placeholder="—"
+            value={v.prensa}
+            onChange={e => onChange({ ...v, prensa: e.target.value })} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SubtaskRow({ st, eqId, vals, onChange }) {
   const key = `${eqId}_${st.s}`;
-  const v = vals[key] || { estado: "", obs: "", probeta: {}, tiempos: {} };
+  const v = vals[key] || { estado: "", obs: "", probeta: {}, tiempos: {}, vacios: {} };
 
   return (
     <div style={S.stRow}>
@@ -498,6 +615,7 @@ function SubtaskRow({ st, eqId, vals, onChange }) {
         {st.f > 1 ? `🔁 ${st.f}x por turno` : "1x por turno"}
         {st.probeta && <span style={{ marginLeft: 6, fontSize: 10, background: "#FEF3C7", color: "#92400E", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>🧪 Probeta</span>}
         {st.tiempos && <span style={{ marginLeft: 6, fontSize: 10, background: "#E0F2FE", color: "#075985", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>⏱ Tiempos</span>}
+        {st.vacios && <span style={{ marginLeft: 6, fontSize: 10, background: "#FFEDD5", color: "#C2410C", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>📊 Vacíos</span>}
       </div>
 
       <div style={S.stateBar}>
@@ -525,6 +643,13 @@ function SubtaskRow({ st, eqId, vals, onChange }) {
         />
       )}
 
+      {st.vacios && (
+        <VaciosFields
+          vals={v.vacios}
+          onChange={(vv) => onChange(key, { ...v, vacios: vv })}
+        />
+      )}
+
       <textarea style={S.textarea} placeholder="Observación (opcional)..."
         value={v.obs}
         onChange={e => onChange(key, { ...v, obs: e.target.value })} />
@@ -532,11 +657,12 @@ function SubtaskRow({ st, eqId, vals, onChange }) {
   );
 }
 
-function EquipoBlock({ eq, vals, onChange }) {
+function EquipoBlock({ eq, vals, onChange, version }) {
   const [open, setOpen] = useState(false);
   const total = eq.subtareas.length;
   const done = eq.subtareas.filter(st => (vals[`${eq.id}_${st.s}`] || {}).estado).length;
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  const lavadosKey = `${eq.id}_lavados`;
 
   return (
     <div style={{ borderBottom: "1px solid #F1F5F9" }}>
@@ -554,6 +680,7 @@ function EquipoBlock({ eq, vals, onChange }) {
         </div>
         <span style={{ fontSize: 18, color: "#94A3B8", marginLeft: 6, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "block" }}>▾</span>
       </div>
+
       {open && (
         <div>
           {eq.consolidado && (
@@ -561,16 +688,25 @@ function EquipoBlock({ eq, vals, onChange }) {
               📌 Sección consolidada: incluye Sala azul Eco PC 105 (ex-7) + Costado cadena PRP3 (ex-8)
             </div>
           )}
+
           {eq.subtareas.map(st => (
             <SubtaskRow key={st.s} st={st} eqId={eq.id} vals={vals} onChange={onChange} />
           ))}
+
+          {/* Campos Paño/Tela solo en LILA 1 */}
+          {eq.lavadosFields && version === "lila1" && (
+            <LavadosFields
+              vals={vals[lavadosKey] || {}}
+              onChange={(sec, v) => onChange(lavadosKey, { ...(vals[lavadosKey] || {}), [sec]: v })}
+            />
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function SectorBlock({ sec, vals, onChange }) {
+function SectorBlock({ sec, vals, onChange, version }) {
   const [open, setOpen] = useState(true);
   const style = SECTOR_STYLES[sec.id];
   const allSt = sec.equipos.flatMap(e => e.subtareas);
@@ -590,7 +726,7 @@ function SectorBlock({ sec, vals, onChange }) {
         <span style={{ color: style.text, fontSize: 16, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "block" }}>▾</span>
       </div>
       {open && sec.equipos.map(eq => (
-        <EquipoBlock key={eq.id} eq={eq} sectorId={sec.id} vals={vals} onChange={onChange} />
+        <EquipoBlock key={eq.id} eq={eq} vals={vals} onChange={onChange} version={version} />
       ))}
     </div>
   );
@@ -599,35 +735,33 @@ function SectorBlock({ sec, vals, onChange }) {
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 export default function LilaApp() {
-  const [tab, setTab] = useState("form");
+  const [tab, setTab]         = useState("form");
+  const [version, setVersion] = useState("lila1");
   const [tecnico, setTecnico] = useState("");
-  const [turno, setTurno] = useState("AM");
-  const [fecha, setFecha] = useState(todayStr());
-  const [obsGen, setObsGen] = useState("");
-  const [vals, setVals] = useState({});
+  const [turno, setTurno]     = useState("AM");
+  const [fecha, setFecha]     = useState(todayStr());
+  const [obsGen, setObsGen]   = useState("");
+  const [vals, setVals]       = useState({});
   const [registros, setRegistros] = useState([]);
-  const [toast, setToast] = useState("");
-  const [filTec, setFilTec] = useState("");
+  const [toast, setToast]     = useState("");
+  const [filTec, setFilTec]   = useState("");
   const [filTurno, setFilTurno] = useState("");
 
   useEffect(() => {
     window.storage?.get("lila_registros").then(r => {
-      if (r?.value) {
-        try { setRegistros(JSON.parse(r.value)); } catch {}
-      }
+      if (r?.value) { try { setRegistros(JSON.parse(r.value)); } catch {} }
     }).catch(() => {});
   }, []);
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3000);
-  };
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   const handleVal = useCallback((key, v) => {
     setVals(prev => ({ ...prev, [key]: v }));
   }, []);
 
-  const allSt = SECTORES.flatMap(s => s.equipos).flatMap(e => e.subtareas.map(st => ({ eqId: e.id, st })));
+  const activeSectores = version === "lila2" ? getSectoresLila2() : SECTORES;
+
+  const allSt = activeSectores.flatMap(s => s.equipos).flatMap(e => e.subtareas.map(st => ({ eqId: e.id, st })));
   const doneCount = allSt.filter(({ eqId, st }) => (vals[`${eqId}_${st.s}`] || {}).estado).length;
   const total = allSt.length;
   const pctGlobal = total > 0 ? Math.round(doneCount / total * 100) : 0;
@@ -635,17 +769,20 @@ export default function LilaApp() {
   const guardar = () => {
     if (!tecnico) { showToast("⚠️ Selecciona el técnico"); return; }
     const tasks = [];
-    SECTORES.forEach(sec => sec.equipos.forEach(eq => {
+    activeSectores.forEach(sec => sec.equipos.forEach(eq => {
       eq.subtareas.forEach(st => {
         const v = vals[`${eq.id}_${st.s}`] || {};
         tasks.push({
           sector: sec.label, equipo: eq.label, n_equipo: eq.n,
           subtarea: st.s, desc: st.desc, estado: v.estado || "Pendiente",
-          obs: v.obs || "", probeta: v.probeta || {}, tiempos: v.tiempos || {},
+          obs: v.obs || "", probeta: v.probeta || {}, tiempos: v.tiempos || {}, vacios: v.vacios || {},
         });
       });
     }));
-    const reg = { id: Date.now(), ts: new Date().toISOString(), fecha, turno, tecnico, obs_gen: obsGen, tasks };
+    const reg = {
+      id: Date.now(), ts: new Date().toISOString(),
+      fecha, turno, tecnico, version, obs_gen: obsGen, tasks,
+    };
     const newRegs = [reg, ...registros];
     setRegistros(newRegs);
     window.storage?.set("lila_registros", JSON.stringify(newRegs)).catch(() => {});
@@ -659,9 +796,10 @@ export default function LilaApp() {
 
   const exportCSV = () => {
     if (!registros.length) { showToast("Sin registros para exportar"); return; }
-    const header = "Timestamp,Fecha,Turno,Tecnico,Observacion_General,Sector,Equipo,N_Equipo,Subtarea,Descripcion,Estado,Observacion_Tarea";
+    const header = "Timestamp,Fecha,Turno,Version,Tecnico,Obs_General,Sector,Equipo,N_Equipo,Subtarea,Descripcion,Estado,Observacion_Tarea";
     const rows = registros.flatMap(r => r.tasks.map(t =>
-      [r.ts, r.fecha, r.turno, r.tecnico, r.obs_gen, t.sector, t.equipo, t.n_equipo, t.subtarea, t.desc, t.estado, t.obs]
+      [r.ts, r.fecha, r.turno, r.version || "lila1", r.tecnico, r.obs_gen,
+       t.sector, t.equipo, t.n_equipo, t.subtarea, t.desc, t.estado, t.obs]
         .map(v => `"${String(v || "").replace(/"/g, '""')}"`).join(",")
     ));
     const csv = [header, ...rows].join("\n");
@@ -673,7 +811,6 @@ export default function LilaApp() {
   };
 
   const filtered = registros.filter(r => (!filTec || r.tecnico === filTec) && (!filTurno || r.turno === filTurno));
-
   const allTasks = registros.flatMap(r => r.tasks);
   const stats = STATE_LABELS.reduce((acc, l) => { acc[l] = allTasks.filter(t => t.estado === l).length; return acc; }, {});
 
@@ -681,10 +818,14 @@ export default function LilaApp() {
     <div style={S.app}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
+      {/* Header */}
       <div style={S.header}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={S.headerTitle}>LILA · Softys Talagante</div>
+            <div style={S.headerTitle}>
+              LILA · Softys Talagante
+              <span style={S.versionBadge(version)}>{version === "lila2" ? "LILA 2" : "Completa"}</span>
+            </div>
             <div style={S.headerSub}>
               {tab === "form" ? `${doneCount}/${total} tareas · ${pctGlobal}%` : tab === "dash" ? "Dashboard de turno" : "Historial de registros"}
             </div>
@@ -700,14 +841,38 @@ export default function LilaApp() {
         )}
       </div>
 
+      {/* Tab bar */}
       <div style={S.tabBar}>
         {[["form", "📋 Registro"], ["dash", "📊 Dashboard"], ["hist", "🕓 Historial"]].map(([v, l]) => (
           <button key={v} style={S.tab(tab === v)} onClick={() => setTab(v)}>{l}</button>
         ))}
       </div>
 
+      {/* ── FORMULARIO ── */}
       {tab === "form" && (
         <div style={S.page}>
+
+          {/* Selector de versión */}
+          <div style={S.card}>
+            <div style={S.cardPad}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Versión de ronda</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={S.versionBtn(version === "lila1")} onClick={() => setVersion("lila1")}>
+                  📋 LILA Completa
+                </button>
+                <button style={S.versionBtn(version === "lila2")} onClick={() => setVersion("lila2")}>
+                  ⚡ LILA 2 · Turno rápido
+                </button>
+              </div>
+              {version === "lila2" && (
+                <div style={{ fontSize: 11, color: "#92400E", background: "#FEF9C3", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>
+                  Muestra equipos 3 y 12 completos + todas las subtareas de 2x por turno
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Datos del turno */}
           <div style={S.card}>
             <div style={S.cardPad}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -725,21 +890,33 @@ export default function LilaApp() {
                     <option value="PM">Turno PM</option>
                   </select>
                 </div>
-                <div style={S.fieldRow}>
+                <div style={{ ...S.fieldRow, gridColumn: "1 / -1" }}>
                   <label style={S.fieldLabel}>Fecha</label>
                   <input style={S.input} type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
-                </div>
-                <div style={S.fieldRow}>
-                  <label style={S.fieldLabel}>Observación general</label>
-                  <input style={S.input} type="text" value={obsGen} placeholder="Novedades..." onChange={e => setObsGen(e.target.value)} />
                 </div>
               </div>
             </div>
           </div>
 
-          {SECTORES.map(sec => (
-            <SectorBlock key={sec.id} sec={sec} vals={vals} onChange={handleVal} />
+          {/* Sectores */}
+          {activeSectores.map(sec => (
+            <SectorBlock key={sec.id} sec={sec} vals={vals} onChange={handleVal} version={version} />
           ))}
+
+          {/* Observación general — al final */}
+          <div style={S.card}>
+            <div style={S.cardPad}>
+              <label style={{ ...S.fieldLabel, fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 8, display: "block" }}>
+                💬 Observación general del turno
+              </label>
+              <textarea
+                style={{ ...S.textarea, minHeight: 100 }}
+                placeholder="Novedades del turno, incidentes, condiciones especiales, anomalías relevantes..."
+                value={obsGen}
+                onChange={e => setObsGen(e.target.value)}
+              />
+            </div>
+          </div>
 
           <button style={S.primaryBtn} onClick={guardar}>
             💾 Guardar registro LILA
@@ -747,6 +924,7 @@ export default function LilaApp() {
         </div>
       )}
 
+      {/* ── DASHBOARD ── */}
       {tab === "dash" && (
         <div style={S.page}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
@@ -788,7 +966,10 @@ export default function LilaApp() {
                     {r.turno === "AM" ? "🌅" : "🌙"}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>{r.tecnico}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>
+                      {r.tecnico}
+                      <span style={S.versionBadge(r.version || "lila1")}>{r.version === "lila2" ? "LILA 2" : "Completa"}</span>
+                    </div>
                     <div style={{ fontSize: 11, color: "#94A3B8" }}>{fmtDate(r.fecha)} · Turno {r.turno}</div>
                   </div>
                   <div style={{ fontSize: 11, color: "#64748B" }}>
@@ -802,6 +983,7 @@ export default function LilaApp() {
         </div>
       )}
 
+      {/* ── HISTORIAL ── */}
       {tab === "hist" && (
         <div style={S.page}>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -838,7 +1020,10 @@ export default function LilaApp() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B" }}>{r.tecnico}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B" }}>
+                        {r.tecnico}
+                        <span style={S.versionBadge(r.version || "lila1")}>{r.version === "lila2" ? "LILA 2" : "Completa"}</span>
+                      </div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: pct === 100 ? "#15803D" : "#3B82F6" }}>{pct}%</div>
                     </div>
                     <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{fmtDate(r.fecha)} · Turno {r.turno}</div>
