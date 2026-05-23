@@ -16,15 +16,17 @@ const TIME_UNITS = ["s", "min"];
 
 const SECTOR_STYLES = {
   mp3:  { bg: "#E8F5E9", border: "#4CAF50", text: "#1B5E20", icon: "🧪" },
+  mp3b: { bg: "#E0F2F7", border: "#0097A7", text: "#006064", icon: "🔧" },
   clar: { bg: "#E3F2FD", border: "#2196F3", text: "#0D47A1", icon: "💧" },
   mp12: { bg: "#FFF8E1", border: "#FFC107", text: "#E65100", icon: "⚙️" },
   eflu: { bg: "#FCE4EC", border: "#E91E63", text: "#880E4F", icon: "♻️" },
 };
 
 const SECTORES = [
+  // ── 1. Sala Aditivos MP3 y Sala Azul ───────────────────────────────────────
   {
     id: "mp3",
-    label: "Sala Aditivos MP3",
+    label: "Sala Aditivos MP3 y Sala Azul",
     equipos: [
       {
         n: 1, id: "ecowash", label: "Ecowash", accion: "I,L",
@@ -58,6 +60,7 @@ const SECTORES = [
       {
         n: 3, id: "bombas_sala", label: "Bombas dosificadoras sala aditivo", accion: "I,L",
         epp: "Linterna, aire comprimido, línea de agua",
+        consolidado: true,
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, validar que estén encendidas en modo correspondiente (continuo/batch)" },
           { s: 2, f: 1, desc: "Limpiar la carcasa y pantalla de cada una de las bombas" },
@@ -77,13 +80,14 @@ const SECTORES = [
             productos_tiempo: ["Ecopart PU 40", "Ecopart PU 12", "Ecoenz C PU 40", "Ecoenz RF 200 PU 12", "Ecoenz RF 200 PU 40", "Eco PC 105 PU 12", "Eco PC 105 PU 40"],
           },
         ],
-        consolidado: true,
       },
     ],
   },
+
+  // ── 2. MP3 ─────────────────────────────────────────────────────────────────
   {
-    id: "clar",
-    label: "Sector Clarificadores",
+    id: "mp3b",
+    label: "MP3",
     equipos: [
       {
         n: 4, id: "regadera_tela", label: "Regadera móvil Tela", accion: "I,L",
@@ -125,55 +129,65 @@ const SECTORES = [
           },
         ],
       },
+    ],
+  },
+
+  // ── 3. Clarificadores ──────────────────────────────────────────────────────
+  {
+    id: "clar",
+    label: "Clarificadores",
+    equipos: [
       {
-        n: 9, id: "filtro_grav", label: "Filtro gravitacional", accion: "I,L",
+        n: 7, id: "filtro_grav", label: "Filtro gravitacional", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Malla completa debe estar limpia y sin roturas" },
-          { s: 2, f: 1, desc: "Limpiar malla filtro gravitacional" },
+          { s: 2, f: 1, desc: "Limpiar malla filtro gravitacional", soloAM: true },
         ],
       },
       {
-        n: 10, id: "floodaf", label: "Floodaf", accion: "I",
+        n: 8, id: "floodaf", label: "Floodaf", accion: "I",
         epp: "",
         subtareas: [
-          { s: 1, f: 1, desc: "Barredores operativos y en condición básica, limpiar paletas de barredor, superficie de salida de lodo y de agua clarificada" },
+          { s: 1, f: 1, desc: "Barredores operativos y en condición básica, limpiar paletas de barredor, superficie de salida de lodo y de agua clarificada", soloAM: true },
           { s: 2, f: 1, desc: "Inspeccionar correcta formación de floc en escotillas" },
           { s: 3, f: 1, desc: "Asegurar calidad de lodo, espesor del colchón, ausencia de espuma" },
-          { s: 4, f: 1, desc: "Inspeccionar correcto funcionamiento de bombas de Airsolver y flujómetro de aire (debe estar entre 5 y 12 Nm³/h)" },
-          { s: 5, f: 1, desc: "Inspeccionar calidad del agua clarificada: baja/nula presencia de fibra, medir turbidez (máx. 70, std < 50)" },
+          { s: 4, f: 1, desc: "Inspeccionar correcto funcionamiento de bombas de Airsolver y flujómetro de aire (debe estar entre 10 y 15 Nm³/h)" },
+          { s: 5, f: 1, desc: "Inspeccionar calidad del agua clarificada: baja/nula presencia de fibra, medir turbidez (máx. 70, std < 50)", turbidez: true },
           { s: 6, f: 1, desc: "Revisar velocidad de barredores, altura del último barredor para asegurar remoción correcta del lodo" },
         ],
       },
       {
-        n: 11, id: "saturno", label: "Saturno", accion: "I",
+        n: 9, id: "saturno", label: "Saturno", accion: "I",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar correcta formación de floc" },
           { s: 2, f: 1, desc: "Asegurar calidad de lodo, espesor del colchón, ausencia de espuma" },
-          { s: 3, f: 1, desc: "Inspeccionar calidad del agua clarificada: turbidez (máx. 200, std < 100)" },
+          { s: 3, f: 1, desc: "Inspeccionar calidad del agua clarificada: turbidez (máx. 200, std < 100)", turbidez: true },
           { s: 4, f: 1, desc: "Verificar rango de operación de UDS" },
-          { s: 5, f: 1, desc: "Revisar velocidad de barredores, nivel del clarificador y flujo de entrada" },
+          { s: 5, f: 1, desc: "Revisar flujo de aire, nivel del clarificador y flujo de entrada", niveles: true },
           { s: 6, f: 1, desc: "Validar correcta llegada de floculante y coagulante" },
         ],
       },
     ],
   },
+
+  // ── 4. Sector MP2 y MP1 ────────────────────────────────────────────────────
   {
     id: "mp12",
     label: "Sector MP2 y MP1",
     equipos: [
       {
-        n: 12, id: "bba_enzima", label: "BBA Enzima refinador sala aditivo MP2", accion: "I,L",
+        n: 10, id: "bba_enzima", label: "BBA Enzima refinador sala aditivo MP2", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Limpiar la carcasa y pantalla de la bomba" },
           { s: 2, f: 1, desc: "Limpiar pretil de tambor y rack, retirar objetos extraños (tapas, herramientas, amarras)" },
-          { s: 3, f: 1, desc: "Validar que bomba se encuentre detenida y medir nivel del tambor" },
+          { s: 3, f: 1, desc: "Validar que bomba se encuentre detenida y medir nivel del tambor, en caso de estar en servicio consultar el motivo a encargado MP02 e indicarlo en la observación" },
         ],
       },
       {
-        n: 13, id: "prp1", label: "PRP1", accion: "I,L",
+        n: 11, id: "prp1", label: "PRP1", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, retirar objetos que no correspondan" },
@@ -200,7 +214,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 14, id: "ecosan431", label: "Ecosan 431 Tq 502", accion: "I,L",
+        n: 12, id: "ecosan431", label: "Ecosan 431 Tq 502", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, retirar objetos que no correspondan" },
@@ -212,12 +226,14 @@ const SECTORES = [
       },
     ],
   },
+
+  // ── 5. Sector Efluente ─────────────────────────────────────────────────────
   {
     id: "eflu",
     label: "Sector Efluente",
     equipos: [
       {
-        n: 15, id: "polimero_clar", label: "Preparador de polímero clarificación primaria", accion: "I,L",
+        n: 13, id: "polimero_clar", label: "Preparador de polímero clarificación primaria", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona del preparador de polímero y bombas de tornillo del floculante a Floodaf y Saturno" },
@@ -228,7 +244,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 16, id: "ecofix098", label: "Ecofix 098p Cuba", accion: "I,L",
+        n: 14, id: "ecofix098", label: "Ecofix 098p Cuba", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Revisar nivel de la cuba. Si está bajo 20%, llenar con agua y añadir un saco lentamente a la solución" },
@@ -236,7 +252,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 17, id: "polimero_lodo", label: "Preparador de polímero desaguado de lodo", accion: "I,L",
+        n: 15, id: "polimero_lodo", label: "Preparador de polímero desaguado de lodo", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Verificar nivel de tolva de preparador de polímero" },
@@ -247,7 +263,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 18, id: "rack_coag", label: "Rack coagulante, Ecopart y Ecofix 098p", accion: "I,L",
+        n: 16, id: "rack_coag", label: "Rack coagulante, Ecopart y Ecofix 098p", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, retirar objetos que no correspondan" },
@@ -261,7 +277,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 19, id: "rack_olor", label: "Rack control de olor", accion: "I,L",
+        n: 17, id: "rack_olor", label: "Rack control de olor", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, retirar objetos que no correspondan" },
@@ -274,7 +290,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 20, id: "rack_biocida", label: "Rack biocida filtros de arena", accion: "I,L",
+        n: 18, id: "rack_biocida", label: "Rack biocida filtros de arena", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, retirar objetos que no correspondan" },
@@ -286,7 +302,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 21, id: "rack_nutri", label: "Rack nutrientes bioreactor", accion: "I,L",
+        n: 19, id: "rack_nutri", label: "Rack nutrientes bioreactor", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, retirar objetos que no correspondan" },
@@ -299,7 +315,7 @@ const SECTORES = [
         ],
       },
       {
-        n: 22, id: "rack_antiespuma", label: "Rack antiespumante y biocida", accion: "I,L",
+        n: 20, id: "rack_antiespuma", label: "Rack antiespumante y biocida", accion: "I,L",
         epp: "",
         subtareas: [
           { s: 1, f: 1, desc: "Inspeccionar y limpiar zona de bombas dosificadoras, retirar objetos que no correspondan" },
@@ -314,15 +330,15 @@ const SECTORES = [
   },
 ];
 
-// ── LILA 2 — solo equipos 3 y 12 + todas las subtareas con f ≥ 2 ──────────────
+// ── LILA 2 — equipos 3 y 10 completos + subtareas f ≥ 2 ──────────────────────
 function getSectoresLila2() {
   return SECTORES
     .map(sec => ({
       ...sec,
       equipos: sec.equipos
-        .filter(eq => eq.n === 3 || eq.n === 12 || eq.subtareas.some(st => st.f >= 2))
+        .filter(eq => eq.n === 3 || eq.n === 10 || eq.subtareas.some(st => st.f >= 2))
         .map(eq => {
-          if (eq.n === 3 || eq.n === 12) return eq;
+          if (eq.n === 3 || eq.n === 10) return eq;
           return { ...eq, subtareas: eq.subtareas.filter(st => st.f >= 2) };
         }),
     }))
@@ -372,7 +388,7 @@ const S = {
   equipoLabel: { fontSize: 13, fontWeight: 600, color: "#1E293B", flex: 1, lineHeight: 1.3 },
   stRow: { borderBottom: "1px solid #F1F5F9", padding: "10px 14px" },
   stDesc: { fontSize: 13, color: "#334155", lineHeight: 1.5, marginBottom: 8 },
-  stFreq: { fontSize: 11, color: "#94A3B8", marginBottom: 8 },
+  stFreq: { fontSize: 11, color: "#94A3B8", marginBottom: 8, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" },
   stateBar: { display: "flex", gap: 6, marginBottom: 8 },
   stateBtn: (active, color) => ({
     flex: 1, padding: "7px 4px", borderRadius: 8, fontSize: 12, fontWeight: 600,
@@ -381,7 +397,6 @@ const S = {
     color: active ? color.text : "#94A3B8",
     cursor: "pointer",
   }),
-  fieldRow: { marginBottom: 8 },
   fieldLabel: { fontSize: 11, color: "#64748B", marginBottom: 4, display: "block", fontWeight: 500 },
   input: { width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 14, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit", boxSizing: "border-box" },
   select: { width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8, padding: "8px 10px", fontSize: 14, background: "#F8FAFC", color: "#1E293B", fontFamily: "inherit" },
@@ -397,18 +412,22 @@ const S = {
   // Tiempos
   tiempoBox: { background: "#F0F9FF", border: "1.5px solid #7DD3FC", borderRadius: 10, padding: 10, marginBottom: 8 },
   tiempoTitle: { fontSize: 11, fontWeight: 700, color: "#075985", marginBottom: 8 },
-  // Lavados (Ecowash Paño/Tela)
+  // Lavados Paño/Tela
   lavadosBox: { background: "#F0FDF4", border: "1.5px solid #86EFAC", borderRadius: 10, padding: 12, margin: "0 14px 12px" },
-  lavadosTitle: { fontSize: 11, fontWeight: 700, color: "#166534", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 },
+  lavadosTitle: { fontSize: 11, fontWeight: 700, color: "#166534", marginBottom: 10 },
   lavadosSec: { background: "#fff", borderRadius: 8, padding: 10, marginBottom: 8, border: "1px solid #D1FAE5" },
   lavadosSecTitle: { fontSize: 12, fontWeight: 700, color: "#15803D", marginBottom: 8 },
   // Vacíos
   vaciosBox: { background: "#FFF7ED", border: "1.5px solid #FED7AA", borderRadius: 10, padding: 10, marginBottom: 8 },
   vaciosNote: { fontSize: 11, fontWeight: 700, color: "#C2410C", background: "#FFEDD5", borderRadius: 6, padding: "5px 10px", marginBottom: 10, display: "block" },
+  // Turbidez
+  turbidezBox: { background: "#F0F9FF", border: "1.5px solid #BAE6FD", borderRadius: 8, padding: "8px 10px", marginBottom: 8 },
+  // Niveles (Saturno)
+  nivelesBox: { background: "#F5F3FF", border: "1.5px solid #C4B5FD", borderRadius: 10, padding: 10, marginBottom: 8 },
+  nivelesTitle: { fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 8 },
   // Progress
   progBar: () => ({ height: 4, borderRadius: 2, background: "#E2E8F0", overflow: "hidden" }),
   progFill: (pct) => ({ height: "100%", width: `${pct}%`, background: pct === 100 ? "#22C55E" : "#3B82F6", borderRadius: 2, transition: "width 0.3s" }),
-  // Badge / Button
   badge: (color) => ({ display: "inline-block", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: color.bg, color: color.text }),
   primaryBtn: { width: "100%", padding: "14px", borderRadius: 12, background: "#1A2744", color: "#fff", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: 0.2 },
   // Version selector
@@ -425,24 +444,23 @@ const S = {
     color: v === "lila2" ? "#92400E" : "#1D4ED8",
     marginLeft: 6,
   }),
-  // Metrics
   metricCard: (color) => ({ background: color, borderRadius: 12, padding: "14px 12px", textAlign: "center" }),
   metricVal: { fontSize: 28, fontWeight: 800, color: "#1E293B" },
   metricLbl: { fontSize: 11, color: "#64748B", marginTop: 2 },
-  // Toast / History
   toast: (show) => ({
     position: "fixed", bottom: 20, left: "50%", transform: `translateX(-50%) translateY(${show ? 0 : 80}px)`,
     background: "#1A2744", color: "#fff", padding: "10px 20px", borderRadius: 20, fontSize: 13, fontWeight: 600,
     zIndex: 999, transition: "transform 0.3s", whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
   }),
   histCard: { background: "#fff", borderRadius: 12, padding: "12px 14px", marginBottom: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.07)" },
+  chip: (bg, color) => ({ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 10, background: bg, color }),
 };
 
 const STATE_COLORS = {
-  "Hecho":    { bg: "#DCFCE7", border: "#4ADE80", text: "#15803D" },
-  "No OK":    { bg: "#FEE2E2", border: "#F87171", text: "#B91C1C" },
-  "Pendiente":{ bg: "#FEF9C3", border: "#FBBF24", text: "#92400E" },
-  "N/A":      { bg: "#F1F5F9", border: "#CBD5E1", text: "#64748B" },
+  "Hecho":     { bg: "#DCFCE7", border: "#4ADE80", text: "#15803D" },
+  "No OK":     { bg: "#FEE2E2", border: "#F87171", text: "#B91C1C" },
+  "Pendiente": { bg: "#FEF9C3", border: "#FBBF24", text: "#92400E" },
+  "N/A":       { bg: "#F1F5F9", border: "#CBD5E1", text: "#64748B" },
 };
 const STATE_LABELS = ["Hecho", "No OK", "Pendiente", "N/A"];
 
@@ -460,22 +478,17 @@ function ProbetaFields({ productos, vals, onChange }) {
             <div style={S.inlineRow}>
               <div style={S.inlineField}>
                 <label style={S.fieldLabel}>Flujo teórico</label>
-                <input style={{ ...S.input, padding: "7px 8px", fontSize: 13 }}
-                  type="number" min="0" step="0.1" placeholder="0.0"
-                  value={v.flujo_teo}
-                  onChange={e => onChange(prod, { ...v, flujo_teo: e.target.value })} />
+                <input style={{ ...S.input, padding: "7px 8px", fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                  value={v.flujo_teo} onChange={e => onChange(prod, { ...v, flujo_teo: e.target.value })} />
               </div>
               <div style={S.inlineField}>
                 <label style={S.fieldLabel}>Flujo real</label>
-                <input style={{ ...S.input, padding: "7px 8px", fontSize: 13 }}
-                  type="number" min="0" step="0.1" placeholder="0.0"
-                  value={v.flujo_real}
-                  onChange={e => onChange(prod, { ...v, flujo_real: e.target.value })} />
+                <input style={{ ...S.input, padding: "7px 8px", fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                  value={v.flujo_real} onChange={e => onChange(prod, { ...v, flujo_real: e.target.value })} />
               </div>
               <div>
                 <label style={S.fieldLabel}>Unidad</label>
-                <select style={S.unitSel} value={v.unidad}
-                  onChange={e => onChange(prod, { ...v, unidad: e.target.value })}>
+                <select style={S.unitSel} value={v.unidad} onChange={e => onChange(prod, { ...v, unidad: e.target.value })}>
                   {FLOW_UNITS.map(u => <option key={u}>{u}</option>)}
                 </select>
               </div>
@@ -498,14 +511,11 @@ function TiempoFields({ productos, vals, onChange }) {
             <div style={{ ...S.prodName, color: "#075985" }}>{prod}</div>
             <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
               <div style={{ flex: 1 }}>
-                <input style={{ ...S.input, padding: "7px 8px", fontSize: 13 }}
-                  type="number" min="0" step="0.1" placeholder="0.0"
-                  value={v.valor}
-                  onChange={e => onChange(prod, { ...v, valor: e.target.value })} />
+                <input style={{ ...S.input, padding: "7px 8px", fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                  value={v.valor} onChange={e => onChange(prod, { ...v, valor: e.target.value })} />
               </div>
               <div>
-                <select style={S.unitSel} value={v.unidad}
-                  onChange={e => onChange(prod, { ...v, unidad: e.target.value })}>
+                <select style={S.unitSel} value={v.unidad} onChange={e => onChange(prod, { ...v, unidad: e.target.value })}>
                   {TIME_UNITS.map(u => <option key={u}>{u}</option>)}
                 </select>
               </div>
@@ -517,14 +527,9 @@ function TiempoFields({ productos, vals, onChange }) {
   );
 }
 
-// Campos Paño / Tela para Ecowash (solo LILA 1)
 function LavadosFields({ vals, onChange }) {
-  const secciones = [
-    { key: "paño", label: "1 Paño" },
-    { key: "tela", label: "2 Tela" },
-  ];
+  const secciones = [{ key: "paño", label: "1 Paño" }, { key: "tela", label: "2 Tela" }];
   const empty = { n_lavados: "", flujo_alc: "", flujo_ac: "", t_alc: "", t_ac: "" };
-
   return (
     <div style={S.lavadosBox}>
       <div style={S.lavadosTitle}>🧺 Datos de lavado por vestimenta</div>
@@ -533,38 +538,31 @@ function LavadosFields({ vals, onChange }) {
         return (
           <div key={key} style={S.lavadosSec}>
             <div style={S.lavadosSecTitle}>{label}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
+            <div style={{ marginBottom: 6 }}>
+              <label style={S.fieldLabel}>N° Lavados</label>
+              <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" placeholder="0"
+                value={v.n_lavados} onChange={e => onChange(key, { ...v, n_lavados: e.target.value })} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
               <div>
-                <label style={S.fieldLabel}>N° Lavados</label>
-                <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" placeholder="0"
-                  value={v.n_lavados}
-                  onChange={e => onChange(key, { ...v, n_lavados: e.target.value })} />
+                <label style={S.fieldLabel}>Flujo Alcalino</label>
+                <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                  value={v.flujo_alc} onChange={e => onChange(key, { ...v, flujo_alc: e.target.value })} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                <div>
-                  <label style={S.fieldLabel}>Flujo Alcalino</label>
-                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
-                    value={v.flujo_alc}
-                    onChange={e => onChange(key, { ...v, flujo_alc: e.target.value })} />
-                </div>
-                <div>
-                  <label style={S.fieldLabel}>Flujo Ácido</label>
-                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
-                    value={v.flujo_ac}
-                    onChange={e => onChange(key, { ...v, flujo_ac: e.target.value })} />
-                </div>
-                <div>
-                  <label style={S.fieldLabel}>Tiempo Alcalino</label>
-                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
-                    value={v.t_alc}
-                    onChange={e => onChange(key, { ...v, t_alc: e.target.value })} />
-                </div>
-                <div>
-                  <label style={S.fieldLabel}>Tiempo Ácido</label>
-                  <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
-                    value={v.t_ac}
-                    onChange={e => onChange(key, { ...v, t_ac: e.target.value })} />
-                </div>
+              <div>
+                <label style={S.fieldLabel}>Flujo Ácido</label>
+                <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                  value={v.flujo_ac} onChange={e => onChange(key, { ...v, flujo_ac: e.target.value })} />
+              </div>
+              <div>
+                <label style={S.fieldLabel}>Tiempo Alcalino</label>
+                <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                  value={v.t_alc} onChange={e => onChange(key, { ...v, t_alc: e.target.value })} />
+              </div>
+              <div>
+                <label style={S.fieldLabel}>Tiempo Ácido</label>
+                <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                  value={v.t_ac} onChange={e => onChange(key, { ...v, t_ac: e.target.value })} />
               </div>
             </div>
           </div>
@@ -574,31 +572,19 @@ function LavadosFields({ vals, onChange }) {
   );
 }
 
-// Campos de vacío para equipo 5, subtarea 3
 function VaciosFields({ vals, onChange }) {
   const v = vals || { sifon1: "", sifon2: "", prensa: "" };
   return (
     <div style={S.vaciosBox}>
       <span style={S.vaciosNote}>⚠️ Valores deben ser obtenidos de terreno</span>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        <div>
-          <label style={S.fieldLabel}>Vacío Sifón 1</label>
-          <input style={{ ...S.input, fontSize: 13 }} type="number" step="0.1" placeholder="—"
-            value={v.sifon1}
-            onChange={e => onChange({ ...v, sifon1: e.target.value })} />
-        </div>
-        <div>
-          <label style={S.fieldLabel}>Vacío Sifón 2</label>
-          <input style={{ ...S.input, fontSize: 13 }} type="number" step="0.1" placeholder="—"
-            value={v.sifon2}
-            onChange={e => onChange({ ...v, sifon2: e.target.value })} />
-        </div>
-        <div>
-          <label style={S.fieldLabel}>Vacío Prensa</label>
-          <input style={{ ...S.input, fontSize: 13 }} type="number" step="0.1" placeholder="—"
-            value={v.prensa}
-            onChange={e => onChange({ ...v, prensa: e.target.value })} />
-        </div>
+        {[["sifon1", "Vacío Sifón 1"], ["sifon2", "Vacío Sifón 2"], ["prensa", "Vacío Prensa"]].map(([k, lbl]) => (
+          <div key={k}>
+            <label style={S.fieldLabel}>{lbl}</label>
+            <input style={{ ...S.input, fontSize: 13 }} type="number" step="0.01" placeholder="0.00"
+              value={v[k]} onChange={e => onChange({ ...v, [k]: e.target.value })} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -606,16 +592,19 @@ function VaciosFields({ vals, onChange }) {
 
 function SubtaskRow({ st, eqId, vals, onChange }) {
   const key = `${eqId}_${st.s}`;
-  const v = vals[key] || { estado: "", obs: "", probeta: {}, tiempos: {}, vacios: {} };
+  const v = vals[key] || { estado: "", obs: "", probeta: {}, tiempos: {}, vacios: {}, turbidez: "", niveles: {} };
 
   return (
     <div style={S.stRow}>
       <div style={S.stDesc}>{st.desc}</div>
       <div style={S.stFreq}>
-        {st.f > 1 ? `🔁 ${st.f}x por turno` : "1x por turno"}
-        {st.probeta && <span style={{ marginLeft: 6, fontSize: 10, background: "#FEF3C7", color: "#92400E", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>🧪 Probeta</span>}
-        {st.tiempos && <span style={{ marginLeft: 6, fontSize: 10, background: "#E0F2FE", color: "#075985", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>⏱ Tiempos</span>}
-        {st.vacios && <span style={{ marginLeft: 6, fontSize: 10, background: "#FFEDD5", color: "#C2410C", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>📊 Vacíos</span>}
+        <span>{st.f > 1 ? `🔁 ${st.f}x por turno` : "1x por turno"}</span>
+        {st.soloAM   && <span style={S.chip("#FEF9C3", "#854D0E")}>☀️ Solo AM</span>}
+        {st.probeta  && <span style={S.chip("#FEF3C7", "#92400E")}>🧪 Probeta</span>}
+        {st.tiempos  && <span style={S.chip("#E0F2FE", "#075985")}>⏱ Tiempos</span>}
+        {st.vacios   && <span style={S.chip("#FFEDD5", "#C2410C")}>📊 Vacíos</span>}
+        {st.turbidez && <span style={S.chip("#E0F2FE", "#0369A1")}>💧 Turbidez</span>}
+        {st.niveles  && <span style={S.chip("#EDE9FE", "#5B21B6")}>📈 Niveles</span>}
       </div>
 
       <div style={S.stateBar}>
@@ -628,39 +617,67 @@ function SubtaskRow({ st, eqId, vals, onChange }) {
       </div>
 
       {st.probeta && (
-        <ProbetaFields
-          productos={st.productos}
-          vals={v.probeta}
-          onChange={(prod, pv) => onChange(key, { ...v, probeta: { ...v.probeta, [prod]: pv } })}
-        />
+        <ProbetaFields productos={st.productos} vals={v.probeta}
+          onChange={(prod, pv) => onChange(key, { ...v, probeta: { ...v.probeta, [prod]: pv } })} />
       )}
-
       {st.tiempos && (
-        <TiempoFields
-          productos={st.productos_tiempo}
-          vals={v.tiempos}
-          onChange={(prod, tv) => onChange(key, { ...v, tiempos: { ...v.tiempos, [prod]: tv } })}
-        />
+        <TiempoFields productos={st.productos_tiempo} vals={v.tiempos}
+          onChange={(prod, tv) => onChange(key, { ...v, tiempos: { ...v.tiempos, [prod]: tv } })} />
+      )}
+      {st.vacios && (
+        <VaciosFields vals={v.vacios}
+          onChange={(vv) => onChange(key, { ...v, vacios: vv })} />
       )}
 
-      {st.vacios && (
-        <VaciosFields
-          vals={v.vacios}
-          onChange={(vv) => onChange(key, { ...v, vacios: vv })}
-        />
+      {/* Turbidez */}
+      {st.turbidez && (
+        <div style={S.turbidezBox}>
+          <label style={{ ...S.fieldLabel, color: "#0369A1", fontWeight: 700 }}>💧 Valor de turbidez (NTU)</label>
+          <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+            value={v.turbidez || ""}
+            onChange={e => onChange(key, { ...v, turbidez: e.target.value })} />
+        </div>
+      )}
+
+      {/* Niveles — Saturno s:5 */}
+      {st.niveles && (
+        <div style={S.nivelesBox}>
+          <div style={S.nivelesTitle}>📈 Valores de operación</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            <div>
+              <label style={S.fieldLabel}>Nivel (0–100)</label>
+              <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" max="100" step="0.1" placeholder="0.0"
+                value={(v.niveles || {}).nivel || ""}
+                onChange={e => onChange(key, { ...v, niveles: { ...(v.niveles || {}), nivel: e.target.value } })} />
+            </div>
+            <div>
+              <label style={S.fieldLabel}>Flujo de aire</label>
+              <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                value={(v.niveles || {}).flujo_aire || ""}
+                onChange={e => onChange(key, { ...v, niveles: { ...(v.niveles || {}), flujo_aire: e.target.value } })} />
+            </div>
+            <div>
+              <label style={S.fieldLabel}>Flujo de entrada</label>
+              <input style={{ ...S.input, fontSize: 13 }} type="number" min="0" step="0.1" placeholder="0.0"
+                value={(v.niveles || {}).flujo_entrada || ""}
+                onChange={e => onChange(key, { ...v, niveles: { ...(v.niveles || {}), flujo_entrada: e.target.value } })} />
+            </div>
+          </div>
+        </div>
       )}
 
       <textarea style={S.textarea} placeholder="Observación (opcional)..."
-        value={v.obs}
-        onChange={e => onChange(key, { ...v, obs: e.target.value })} />
+        value={v.obs} onChange={e => onChange(key, { ...v, obs: e.target.value })} />
     </div>
   );
 }
 
-function EquipoBlock({ eq, vals, onChange, version }) {
+function EquipoBlock({ eq, vals, onChange, version, turno }) {
   const [open, setOpen] = useState(false);
-  const total = eq.subtareas.length;
-  const done = eq.subtareas.filter(st => (vals[`${eq.id}_${st.s}`] || {}).estado).length;
+  // Filtrar tareas soloAM cuando el turno es PM
+  const visibleSubtareas = eq.subtareas.filter(st => !st.soloAM || turno === "AM");
+  const total = visibleSubtareas.length;
+  const done = visibleSubtareas.filter(st => (vals[`${eq.id}_${st.s}`] || {}).estado).length;
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
   const lavadosKey = `${eq.id}_lavados`;
 
@@ -685,15 +702,12 @@ function EquipoBlock({ eq, vals, onChange, version }) {
         <div>
           {eq.consolidado && (
             <div style={{ background: "#EFF6FF", padding: "6px 14px", fontSize: 11, color: "#1D4ED8", borderBottom: "1px solid #DBEAFE" }}>
-              📌 Sección consolidada: incluye Sala azul Eco PC 105 (ex-7) + Costado cadena PRP3 (ex-8)
+              📌 Sección consolidada: incluye Sala azul Eco PC 105 + Costado cadena PRP3
             </div>
           )}
-
-          {eq.subtareas.map(st => (
+          {visibleSubtareas.map(st => (
             <SubtaskRow key={st.s} st={st} eqId={eq.id} vals={vals} onChange={onChange} />
           ))}
-
-          {/* Campos Paño/Tela solo en LILA 1 */}
           {eq.lavadosFields && version === "lila1" && (
             <LavadosFields
               vals={vals[lavadosKey] || {}}
@@ -706,11 +720,11 @@ function EquipoBlock({ eq, vals, onChange, version }) {
   );
 }
 
-function SectorBlock({ sec, vals, onChange, version }) {
+function SectorBlock({ sec, vals, onChange, version, turno }) {
   const [open, setOpen] = useState(true);
   const style = SECTOR_STYLES[sec.id];
-  const allSt = sec.equipos.flatMap(e => e.subtareas);
-  const done = allSt.filter(st => {
+  const allVisible = sec.equipos.flatMap(e => e.subtareas.filter(st => !st.soloAM || turno === "AM"));
+  const done = allVisible.filter(st => {
     const eq = sec.equipos.find(e => e.subtareas.includes(st));
     return eq && (vals[`${eq.id}_${st.s}`] || {}).estado;
   }).length;
@@ -721,12 +735,12 @@ function SectorBlock({ sec, vals, onChange, version }) {
         <span style={{ fontSize: 18 }}>{style.icon}</span>
         <div style={{ flex: 1 }}>
           <div style={S.sectionHdrText(style)}>{sec.label}</div>
-          <div style={{ fontSize: 10, color: style.text, opacity: 0.7 }}>{done}/{allSt.length} tareas completadas</div>
+          <div style={{ fontSize: 10, color: style.text, opacity: 0.7 }}>{done}/{allVisible.length} tareas completadas</div>
         </div>
         <span style={{ color: style.text, fontSize: 16, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "block" }}>▾</span>
       </div>
       {open && sec.equipos.map(eq => (
-        <EquipoBlock key={eq.id} eq={eq} vals={vals} onChange={onChange} version={version} />
+        <EquipoBlock key={eq.id} eq={eq} vals={vals} onChange={onChange} version={version} turno={turno} />
       ))}
     </div>
   );
@@ -735,16 +749,16 @@ function SectorBlock({ sec, vals, onChange, version }) {
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 export default function LilaApp() {
-  const [tab, setTab]         = useState("form");
-  const [version, setVersion] = useState("lila1");
-  const [tecnico, setTecnico] = useState("");
-  const [turno, setTurno]     = useState("AM");
-  const [fecha, setFecha]     = useState(todayStr());
-  const [obsGen, setObsGen]   = useState("");
-  const [vals, setVals]       = useState({});
+  const [tab, setTab]           = useState("form");
+  const [version, setVersion]   = useState("lila1");
+  const [tecnico, setTecnico]   = useState("");
+  const [turno, setTurno]       = useState("AM");
+  const [fecha, setFecha]       = useState(todayStr());
+  const [obsGen, setObsGen]     = useState("");
+  const [vals, setVals]         = useState({});
   const [registros, setRegistros] = useState([]);
-  const [toast, setToast]     = useState("");
-  const [filTec, setFilTec]   = useState("");
+  const [toast, setToast]       = useState("");
+  const [filTec, setFilTec]     = useState("");
   const [filTurno, setFilTurno] = useState("");
 
   useEffect(() => {
@@ -754,14 +768,18 @@ export default function LilaApp() {
   }, []);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
-
-  const handleVal = useCallback((key, v) => {
-    setVals(prev => ({ ...prev, [key]: v }));
-  }, []);
+  const handleVal = useCallback((key, v) => setVals(prev => ({ ...prev, [key]: v })), []);
 
   const activeSectores = version === "lila2" ? getSectoresLila2() : SECTORES;
 
-  const allSt = activeSectores.flatMap(s => s.equipos).flatMap(e => e.subtareas.map(st => ({ eqId: e.id, st })));
+  // Progreso considerando filtro soloAM
+  const allSt = activeSectores.flatMap(s =>
+    s.equipos.flatMap(e =>
+      e.subtareas
+        .filter(st => !st.soloAM || turno === "AM")
+        .map(st => ({ eqId: e.id, st }))
+    )
+  );
   const doneCount = allSt.filter(({ eqId, st }) => (vals[`${eqId}_${st.s}`] || {}).estado).length;
   const total = allSt.length;
   const pctGlobal = total > 0 ? Math.round(doneCount / total * 100) : 0;
@@ -770,26 +788,24 @@ export default function LilaApp() {
     if (!tecnico) { showToast("⚠️ Selecciona el técnico"); return; }
     const tasks = [];
     activeSectores.forEach(sec => sec.equipos.forEach(eq => {
-      eq.subtareas.forEach(st => {
-        const v = vals[`${eq.id}_${st.s}`] || {};
-        tasks.push({
-          sector: sec.label, equipo: eq.label, n_equipo: eq.n,
-          subtarea: st.s, desc: st.desc, estado: v.estado || "Pendiente",
-          obs: v.obs || "", probeta: v.probeta || {}, tiempos: v.tiempos || {}, vacios: v.vacios || {},
+      eq.subtareas
+        .filter(st => !st.soloAM || turno === "AM")
+        .forEach(st => {
+          const v = vals[`${eq.id}_${st.s}`] || {};
+          tasks.push({
+            sector: sec.label, equipo: eq.label, n_equipo: eq.n,
+            subtarea: st.s, desc: st.desc, estado: v.estado || "Pendiente",
+            obs: v.obs || "", probeta: v.probeta || {}, tiempos: v.tiempos || {},
+            vacios: v.vacios || {}, turbidez: v.turbidez || "", niveles: v.niveles || {},
+          });
         });
-      });
     }));
-    const reg = {
-      id: Date.now(), ts: new Date().toISOString(),
-      fecha, turno, tecnico, version, obs_gen: obsGen, tasks,
-    };
+    const reg = { id: Date.now(), ts: new Date().toISOString(), fecha, turno, tecnico, version, obs_gen: obsGen, tasks };
     const newRegs = [reg, ...registros];
     setRegistros(newRegs);
     window.storage?.set("lila_registros", JSON.stringify(newRegs)).catch(() => {});
     sendToSheets(reg);
-    setVals({});
-    setObsGen("");
-    setFecha(todayStr());
+    setVals({}); setObsGen(""); setFecha(todayStr());
     showToast("✅ Registro guardado" + (APPS_SCRIPT_URL ? " · enviando a Sheets…" : ""));
     setTab("hist");
   };
@@ -851,22 +867,17 @@ export default function LilaApp() {
       {/* ── FORMULARIO ── */}
       {tab === "form" && (
         <div style={S.page}>
-
-          {/* Selector de versión */}
+          {/* Selector versión */}
           <div style={S.card}>
             <div style={S.cardPad}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Versión de ronda</div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={S.versionBtn(version === "lila1")} onClick={() => setVersion("lila1")}>
-                  📋 LILA Completa
-                </button>
-                <button style={S.versionBtn(version === "lila2")} onClick={() => setVersion("lila2")}>
-                  ⚡ LILA 2 · Turno rápido
-                </button>
+                <button style={S.versionBtn(version === "lila1")} onClick={() => setVersion("lila1")}>📋 LILA Completa</button>
+                <button style={S.versionBtn(version === "lila2")} onClick={() => setVersion("lila2")}>⚡ LILA 2 · Turno rápido</button>
               </div>
               {version === "lila2" && (
                 <div style={{ fontSize: 11, color: "#92400E", background: "#FEF9C3", borderRadius: 8, padding: "6px 10px", marginTop: 8 }}>
-                  Muestra equipos 3 y 12 completos + todas las subtareas de 2x por turno
+                  Equipos 3 y 10 completos + subtareas de 2x por turno
                 </div>
               )}
             </div>
@@ -876,51 +887,51 @@ export default function LilaApp() {
           <div style={S.card}>
             <div style={S.cardPad}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div style={S.fieldRow}>
+                <div>
                   <label style={S.fieldLabel}>Técnico *</label>
                   <select style={S.select} value={tecnico} onChange={e => setTecnico(e.target.value)}>
                     <option value="">Seleccionar...</option>
                     {TECNICOS.map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
-                <div style={S.fieldRow}>
+                <div>
                   <label style={S.fieldLabel}>Turno *</label>
                   <select style={S.select} value={turno} onChange={e => setTurno(e.target.value)}>
                     <option value="AM">Turno AM</option>
                     <option value="PM">Turno PM</option>
                   </select>
                 </div>
-                <div style={{ ...S.fieldRow, gridColumn: "1 / -1" }}>
+                <div style={{ gridColumn: "1 / -1" }}>
                   <label style={S.fieldLabel}>Fecha</label>
                   <input style={S.input} type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
                 </div>
               </div>
+              {turno === "PM" && (
+                <div style={{ fontSize: 11, color: "#0369A1", background: "#E0F2FE", borderRadius: 8, padding: "6px 10px", marginTop: 10 }}>
+                  🌙 Turno PM: se ocultan las tareas marcadas como "Solo AM"
+                </div>
+              )}
             </div>
           </div>
 
           {/* Sectores */}
           {activeSectores.map(sec => (
-            <SectorBlock key={sec.id} sec={sec} vals={vals} onChange={handleVal} version={version} />
+            <SectorBlock key={sec.id} sec={sec} vals={vals} onChange={handleVal} version={version} turno={turno} />
           ))}
 
-          {/* Observación general — al final */}
+          {/* Observación general al final */}
           <div style={S.card}>
             <div style={S.cardPad}>
               <label style={{ ...S.fieldLabel, fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 8, display: "block" }}>
                 💬 Observación general del turno
               </label>
-              <textarea
-                style={{ ...S.textarea, minHeight: 100 }}
+              <textarea style={{ ...S.textarea, minHeight: 100 }}
                 placeholder="Novedades del turno, incidentes, condiciones especiales, anomalías relevantes..."
-                value={obsGen}
-                onChange={e => setObsGen(e.target.value)}
-              />
+                value={obsGen} onChange={e => setObsGen(e.target.value)} />
             </div>
           </div>
 
-          <button style={S.primaryBtn} onClick={guardar}>
-            💾 Guardar registro LILA
-          </button>
+          <button style={S.primaryBtn} onClick={guardar}>💾 Guardar registro LILA</button>
         </div>
       )}
 
@@ -933,7 +944,6 @@ export default function LilaApp() {
             <div style={S.metricCard("#FEF2F2")}><div style={{ ...S.metricVal, color: "#B91C1C" }}>{stats["No OK"] || 0}</div><div style={S.metricLbl}>No OK</div></div>
             <div style={S.metricCard("#FFFBEB")}><div style={{ ...S.metricVal, color: "#92400E" }}>{stats["Pendiente"] || 0}</div><div style={S.metricLbl}>Pendientes</div></div>
           </div>
-
           <div style={S.card}>
             <div style={{ ...S.cardPad, paddingBottom: 6 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 12 }}>Progreso por sector</div>
@@ -941,22 +951,19 @@ export default function LilaApp() {
                 const secTasks = registros.flatMap(r => r.tasks.filter(t => t.sector === sec.label));
                 const secDone = secTasks.filter(t => t.estado === "Hecho" || t.estado === "N/A").length;
                 const pct = secTasks.length > 0 ? Math.round(secDone / secTasks.length * 100) : 0;
-                const style = SECTOR_STYLES[sec.id];
+                const st = SECTOR_STYLES[sec.id];
                 return (
                   <div key={sec.id} style={{ marginBottom: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                      <span style={{ color: "#334155", fontWeight: 500 }}>{style.icon} {sec.label}</span>
+                      <span style={{ color: "#334155", fontWeight: 500 }}>{st.icon} {sec.label}</span>
                       <span style={{ color: "#94A3B8" }}>{secDone}/{secTasks.length}</span>
                     </div>
-                    <div style={S.progBar()}>
-                      <div style={S.progFill(pct)} />
-                    </div>
+                    <div style={S.progBar()}><div style={S.progFill(pct)} /></div>
                   </div>
                 );
               })}
             </div>
           </div>
-
           <div style={S.card}>
             <div style={S.cardPad}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 12 }}>Actividad reciente</div>
@@ -972,9 +979,7 @@ export default function LilaApp() {
                     </div>
                     <div style={{ fontSize: 11, color: "#94A3B8" }}>{fmtDate(r.fecha)} · Turno {r.turno}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#64748B" }}>
-                    {r.tasks.filter(t => t.estado === "Hecho").length}/{r.tasks.length}
-                  </div>
+                  <div style={{ fontSize: 11, color: "#64748B" }}>{r.tasks.filter(t => t.estado === "Hecho").length}/{r.tasks.length}</div>
                 </div>
               ))}
               {!registros.length && <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 13, padding: "16px 0" }}>Sin registros aún</div>}
@@ -996,16 +1001,13 @@ export default function LilaApp() {
               <option value="AM">AM</option>
               <option value="PM">PM</option>
             </select>
-            <button onClick={exportCSV}
-              style={{ padding: "8px 12px", background: "#1A2744", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+            <button onClick={exportCSV} style={{ padding: "8px 12px", background: "#1A2744", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
               📥 CSV
             </button>
           </div>
-
           {filtered.length === 0 ? (
             <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 14, padding: "40px 0" }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-              Sin registros aún
+              <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>Sin registros aún
             </div>
           ) : filtered.map(r => {
             const ok = r.tasks.filter(t => t.estado === "Hecho").length;
@@ -1027,9 +1029,7 @@ export default function LilaApp() {
                       <div style={{ fontSize: 12, fontWeight: 700, color: pct === 100 ? "#15803D" : "#3B82F6" }}>{pct}%</div>
                     </div>
                     <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{fmtDate(r.fecha)} · Turno {r.turno}</div>
-                    <div style={{ ...S.progBar(), marginBottom: 6 }}>
-                      <div style={S.progFill(pct)} />
-                    </div>
+                    <div style={{ ...S.progBar(), marginBottom: 6 }}><div style={S.progFill(pct)} /></div>
                     <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                       <span style={S.badge(STATE_COLORS["Hecho"])}>✓ {ok} hechos</span>
                       {nok > 0 && <span style={S.badge(STATE_COLORS["No OK"])}>✗ {nok} no ok</span>}
