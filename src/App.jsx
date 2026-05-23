@@ -330,19 +330,45 @@ const SECTORES = [
   },
 ];
 
-// ── LILA 2 — equipos 3 y 10 completos + subtareas f ≥ 2 ──────────────────────
+// ── LILA 2 — selección explícita de equipos y subtareas ──────────────────────
 function getSectoresLila2() {
-  return SECTORES
-    .map(sec => ({
-      ...sec,
-      equipos: sec.equipos
-        .filter(eq => eq.n === 3 || eq.n === 10 || eq.subtareas.some(st => st.f >= 2))
-        .map(eq => {
-          if (eq.n === 3 || eq.n === 10) return eq;
-          return { ...eq, subtareas: eq.subtareas.filter(st => st.f >= 2) };
-        }),
-    }))
-    .filter(sec => sec.equipos.length > 0);
+  // Qué incluir por id de equipo:
+  //   allSubtareas: true  → todas las subtareas
+  //   excludeS: [...]     → excluir subtareas por número s
+  //   onlyS: [...]        → incluir solo esas subtareas
+  //   noLavados: true     → ocultar sección Datos de lavado
+  const CFG = {
+    ecowash:       { allSubtareas: true, noLavados: true },          // T1 sin datos de lavado
+    polimero_mp3:  { onlyS: [1, 2] },                                // T2 solo s:1 y s:2
+    // T3 bombas_sala → NO incluir
+    regadera_tela: { allSubtareas: true },                           // T4 completa
+    acond_vest:    { allSubtareas: true, excludeS: [3] },            // T5 sin vacíos sifones
+    // T6 disp_coag → NO incluir
+    filtro_grav:   { allSubtareas: true },                           // T7 completa
+    floodaf:       { allSubtareas: true },                           // T8 completa
+    saturno:       { allSubtareas: true },                           // T9 completa
+    // T10 bba_enzima → NO incluir
+    prp1:          { onlyS: [4, 6] },                                // T11 solo s:4 y s:6
+    // T12+ → NO incluir
+  };
+
+  const result = [];
+  for (const sec of SECTORES) {
+    const equipos = [];
+    for (const eq of sec.equipos) {
+      const cfg = CFG[eq.id];
+      if (!cfg) continue;
+
+      const subtareas = cfg.allSubtareas
+        ? eq.subtareas.filter(st => !(cfg.excludeS || []).includes(st.s))
+        : eq.subtareas.filter(st => (cfg.onlyS || []).includes(st.s));
+
+      if (!subtareas.length) continue;
+      equipos.push({ ...eq, subtareas, lavadosFields: cfg.noLavados ? false : eq.lavadosFields });
+    }
+    if (equipos.length) result.push({ ...sec, equipos });
+  }
+  return result;
 }
 
 // ── GOOGLE SHEETS ─────────────────────────────────────────────────────────────
