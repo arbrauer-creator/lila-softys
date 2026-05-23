@@ -382,7 +382,12 @@ async function sendToSheets(reg) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function todayStr() { return new Date().toISOString().split("T")[0]; }
+function todayStr() {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "America/Santiago" });
+}
+function nowSantiago() {
+  return new Date().toLocaleString("sv-SE", { timeZone: "America/Santiago" }).replace(" ", "T");
+}
 function fmtDate(d) {
   if (!d) return "";
   return new Date(d + "T12:00:00").toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -826,7 +831,7 @@ export default function LilaApp() {
           });
         });
     }));
-    const reg = { id: Date.now(), ts: new Date().toISOString(), fecha, turno, tecnico, version, obs_gen: obsGen, tasks };
+    const reg = { id: Date.now(), ts: nowSantiago(), fecha, turno, tecnico, version, obs_gen: obsGen, tasks };
     const newRegs = [reg, ...registros];
     setRegistros(newRegs);
     window.storage?.set("lila_registros", JSON.stringify(newRegs)).catch(() => {});
@@ -847,7 +852,7 @@ export default function LilaApp() {
     const csv = [header, ...rows].join("\n");
     const a = document.createElement("a");
     a.href = "data:text/csv;charset=utf-8,﻿" + encodeURIComponent(csv);
-    a.download = `LILA_Softys_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `LILA_Softys_${todayStr()}.csv`;
     a.click();
     showToast("📥 CSV exportado");
   };
