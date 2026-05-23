@@ -346,7 +346,7 @@ function getSectoresLila2() {
 }
 
 // ── GOOGLE SHEETS ─────────────────────────────────────────────────────────────
-const APPS_SCRIPT_URL = "";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4JKZ7ry6TqNM3vGRLu7kjdPVN3Ck0Pss0WbWYTFutVVow2PhByCLVbZjuV0CbdY8S/exec";
 
 async function sendToSheets(reg) {
   if (!APPS_SCRIPT_URL) return;
