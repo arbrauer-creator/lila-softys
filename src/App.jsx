@@ -246,24 +246,21 @@ async function compressImage(dataUrl, maxPx = 900, quality = 0.60) {
 
 async function uploadPhotoToDrive({ imageBase64, mimeType, filename, fechaFolder, equipoFolder }) {
   if (!APPS_SCRIPT_URL) return null;
-  const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   try {
-    fetch(APPS_SCRIPT_URL, {
-      method: "POST", mode: "no-cors",
-      body: JSON.stringify({ type: "photo", uploadId, imageBase64, mimeType, filename, fechaFolder, equipoFolder }),
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ type: "photo", imageBase64, mimeType, filename, fechaFolder, equipoFolder }),
+      redirect: "follow",
     });
-  } catch (_) {}
-  // Esperar que el script procese, luego pollear por el URL
-  await sleep(2000);
-  for (let i = 0; i < 12; i++) {
-    try {
-      const res  = await fetch(`${APPS_SCRIPT_URL}?action=getPhoto&id=${uploadId}`, { redirect: "follow" });
-      const data = await res.json();
-      if (data.url) return { url: data.url, thumbnail: data.thumbnail };
-    } catch (_) {}
-    await sleep(1000);
+    const data = await res.json();
+    if (data.url) return { url: data.url, thumbnail: data.thumbnail };
+    console.error("Drive upload response:", data);
+    return null;
+  } catch (err) {
+    console.error("Drive upload error:", err);
+    return null;
   }
-  return null;
 }
 
 async function sendToSheets(reg) {
