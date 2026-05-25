@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -225,6 +225,47 @@ function getSectoresLila2() {
 // ── GOOGLE SHEETS ─────────────────────────────────────────────────────────────
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4JKZ7ry6TqNM3vGRLu7kjdPVN3Ck0Pss0WbWYTFutVVow2PhByCLVbZjuV0CbdY8S/exec";
 
+// ── PHOTO UPLOAD ──────────────────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function compressImage(dataUrl, maxPx = 1200, quality = 0.72) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function uploadPhotoToDrive({ imageBase64, mimeType, filename, fechaFolder, equipoFolder }) {
+  if (!APPS_SCRIPT_URL) return null;
+  const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    fetch(APPS_SCRIPT_URL, {
+      method: "POST", mode: "no-cors",
+      body: JSON.stringify({ type: "photo", uploadId, imageBase64, mimeType, filename, fechaFolder, equipoFolder }),
+    });
+  } catch (_) {}
+  // Esperar que el script procese, luego pollear por el URL
+  await sleep(3000);
+  for (let i = 0; i < 10; i++) {
+    try {
+      const res  = await fetch(`${APPS_SCRIPT_URL}?action=getPhoto&id=${uploadId}`, { redirect: "follow" });
+      const data = await res.json();
+      if (data.url) return { url: data.url, thumbnail: data.thumbnail };
+    } catch (_) {}
+    await sleep(1500);
+  }
+  return null;
+}
+
 async function sendToSheets(reg) {
   if (!APPS_SCRIPT_URL) return;
   try {
@@ -373,30 +414,78 @@ function LoginScreen({ usuarios, onLogin, error, loading }) {
 
 // ── FIELD COMPONENTS ──────────────────────────────────────────────────────────
 
-function PhotoFields({ vals, onChange }) {
+function PhotoFields({ vals, onChange, eqId, stS }) {
+  const valsRef = useRef(vals);
+  useEffect(() => { valsRef.current = vals; }, [vals]);
+
+  const [uploading, setUploading] = useState({}); // { "anterior_0": true }
+  const [driveOk,  setDriveOk]   = useState({}); // { "anterior_0": true/false }
+
   const grupos = [
-    { key: "anterior", label: "📷 Foto estado anterior" },
+    { key: "anterior",  label: "📷 Foto estado anterior"  },
     { key: "posterior", label: "📷 Foto estado posterior" },
   ];
-  const handleFile = (grupo, idx, e) => {
+
+  const handleFile = async (grupo, idx, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const cur = vals || {};
-      const arr = [...(cur[grupo] || [null, null, null])];
-      arr[idx] = ev.target.result;
-      onChange({ ...cur, [grupo]: arr });
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
+    const slotKey = `${grupo}_${idx}`;
+
+    // Leer y comprimir imagen
+    const rawUrl = await new Promise(resolve => {
+      const r = new FileReader();
+      r.onload = ev => resolve(ev.target.result);
+      r.readAsDataURL(file);
+    });
+    const compressed = await compressImage(rawUrl);
+
+    // Mostrar preview local inmediatamente
+    {
+      const cur = valsRef.current || {};
+      const arr = [...(cur[grupo] || [null, null, null])];
+      arr[idx] = { preview: compressed, driveUrl: null, thumbnail: null };
+      onChange({ ...cur, [grupo]: arr });
+    }
+
+    setUploading(p => ({ ...p, [slotKey]: true }));
+    setDriveOk(p => ({ ...p, [slotKey]: null }));
+
+    // Subir a Drive
+    try {
+      const [header, imageBase64] = compressed.split(",");
+      const mimeType = header.match(/:(.*?);/)[1];
+      const fechaFolder = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Santiago" }).slice(0, 7);
+      const equipoFolder = eqId ? `${eqId}_s${stS}` : "general";
+      const filename = `${equipoFolder}_${slotKey}_${Date.now()}.jpg`;
+
+      const result = await uploadPhotoToDrive({ imageBase64, mimeType, filename, fechaFolder, equipoFolder });
+
+      setUploading(p => ({ ...p, [slotKey]: false }));
+      setDriveOk(p => ({ ...p, [slotKey]: !!result }));
+
+      if (result) {
+        const cur = valsRef.current || {};
+        const arr = [...(cur[grupo] || [null, null, null])];
+        arr[idx] = { preview: compressed, driveUrl: result.url, thumbnail: result.thumbnail };
+        onChange({ ...cur, [grupo]: arr });
+      }
+    } catch (_) {
+      setUploading(p => ({ ...p, [slotKey]: false }));
+      setDriveOk(p => ({ ...p, [slotKey]: false }));
+    }
   };
+
   const handleRemove = (grupo, idx) => {
-    const cur = vals || {};
+    const cur = valsRef.current || {};
     const arr = [...(cur[grupo] || [null, null, null])];
     arr[idx] = null;
     onChange({ ...cur, [grupo]: arr });
+    const slotKey = `${grupo}_${idx}`;
+    setUploading(p => ({ ...p, [slotKey]: false }));
+    setDriveOk(p => ({ ...p, [slotKey]: null }));
   };
+
   return (
     <div style={{ background: "#EEF2FF", border: "1.5px solid #C7D7FD", borderRadius: 10, padding: 10, marginBottom: 8 }}>
       {grupos.map(({ key, label }, gi) => (
@@ -404,13 +493,31 @@ function PhotoFields({ vals, onChange }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: "#3730A3", marginBottom: 6 }}>{label}</div>
           <div style={{ display: "flex", gap: 8 }}>
             {[0, 1, 2].map(idx => {
-              const src = (vals?.[key] || [])[idx];
+              const slot     = (vals?.[key] || [])[idx];
+              const slotKey  = `${key}_${idx}`;
+              const isUp     = uploading[slotKey];
+              const ok       = driveOk[slotKey];
+              const preview  = slot?.preview || (typeof slot === "string" ? slot : null);
+              const driveUrl = slot?.driveUrl;
+
               return (
-                <div key={idx} style={{ position: "relative", width: 80, height: 80, borderRadius: 10, border: src ? "2px solid #6366F1" : "1.5px dashed #A5B4FC", background: src ? "transparent" : "#F5F3FF", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {src ? (
+                <div key={idx} style={{ position: "relative", width: 80, height: 80, borderRadius: 10, border: preview ? "2px solid #6366F1" : "1.5px dashed #A5B4FC", background: preview ? "transparent" : "#F5F3FF", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {preview ? (
                     <>
-                      <img src={src} alt={`foto ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <button onClick={() => handleRemove(key, idx)} style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>✕</button>
+                      <img src={preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      {/* Badge Drive */}
+                      <div style={{ position: "absolute", bottom: 2, left: 2, right: 2 }}>
+                        {isUp && (
+                          <div style={{ background: "rgba(0,0,0,0.65)", borderRadius: 4, padding: "1px 4px", fontSize: 9, color: "#FCD34D", textAlign: "center" }}>⏳ Subiendo…</div>
+                        )}
+                        {!isUp && ok === true && (
+                          <a href={driveUrl} target="_blank" rel="noreferrer" style={{ display: "block", background: "rgba(21,128,61,0.85)", borderRadius: 4, padding: "1px 4px", fontSize: 9, color: "#fff", textAlign: "center", textDecoration: "none" }}>✓ Drive</a>
+                        )}
+                        {!isUp && ok === false && (
+                          <div style={{ background: "rgba(185,28,28,0.8)", borderRadius: 4, padding: "1px 4px", fontSize: 9, color: "#fff", textAlign: "center" }}>⚠ Error</div>
+                        )}
+                      </div>
+                      <button onClick={() => handleRemove(key, idx)} style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, lineHeight: 1 }}>✕</button>
                     </>
                   ) : (
                     <label style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#818CF8", fontSize: 10, width: "100%", height: "100%" }}>
@@ -699,7 +806,7 @@ function SubtaskRow({ st, eqId, vals, onChange }) {
         ))}
       </div>
 
-      {st.fotos           && <PhotoFields vals={v.fotos} onChange={fv => onChange(key, { ...v, fotos: fv })} />}
+      {st.fotos           && <PhotoFields vals={v.fotos} onChange={fv => onChange(key, { ...v, fotos: fv })} eqId={eqId} stS={st.s} />}
       {st.presionBombas   && <PresionBombasFields vals={v.presionBombas} onChange={pv => onChange(key, { ...v, presionBombas: pv })} />}
       {st.frecuenciasVF   && <FrecuenciasVFFields vals={v.frecuenciasVF} onChange={fv => onChange(key, { ...v, frecuenciasVF: fv })} />}
       {st.indiceConcentracion && (
@@ -871,13 +978,17 @@ export default function LilaApp() {
     activeSectores.forEach(sec => sec.equipos.forEach(eq => {
       eq.subtareas.filter(st => !st.soloAM || turno === "AM").forEach(st => {
         const v = vals[`${eq.id}_${st.s}`] || {};
+        const fotosAnt  = (v.fotos?.anterior  || []).filter(Boolean);
+        const fotosPost = (v.fotos?.posterior || []).filter(Boolean);
         tasks.push({
           sector: sec.label, equipo: eq.label, n_equipo: eq.n, subtarea: st.s, desc: st.desc,
           estado: v.estado || "Pendiente", obs: v.obs || "",
           probeta: v.probeta || {}, tiempos: v.tiempos || {}, vacios: v.vacios || {},
           turbidez: v.turbidez || "", niveles: v.niveles || {},
-          fotos_anterior: ((v.fotos?.anterior) || []).filter(Boolean).length,
-          fotos_posterior: ((v.fotos?.posterior) || []).filter(Boolean).length,
+          fotos_anterior:      fotosAnt.length,
+          fotos_posterior:     fotosPost.length,
+          fotos_anterior_urls:  fotosAnt.map(p => p?.driveUrl).filter(Boolean),
+          fotos_posterior_urls: fotosPost.map(p => p?.driveUrl).filter(Boolean),
           presionBombas: v.presionBombas || {},
           frecuenciasVF: v.frecuenciasVF || {},
           indiceConcentracion: v.indiceConcentracion || "",
