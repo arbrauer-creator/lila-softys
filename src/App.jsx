@@ -388,7 +388,7 @@ function LoginScreen({ usuarios, onLogin, error, loading }) {
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>🏭</div>
         <div style={S.loginTitle}>LILA</div>
-        <div style={S.loginSub}>Softys Talagante</div>
+        <div style={S.loginSub}>Eco-Quim SF TG</div>
       </div>
       <div style={S.loginCard}>
         <label style={S.loginLabel}>Usuario</label>
@@ -1045,7 +1045,7 @@ export default function LilaApp() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={S.headerTitle}>
-              LILA · Softys
+              LILA · Eco-Quim SF TG
               <span style={S.versionBadge(version)}>{version === "lila2" ? "LILA 2" : "Completa"}</span>
             </div>
             <div style={S.headerSub}>
