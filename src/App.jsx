@@ -228,7 +228,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby4JKZ7ry6TqNM3
 // ── PHOTO UPLOAD ──────────────────────────────────────────────────────────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function compressImage(dataUrl, maxPx = 1200, quality = 0.72) {
+async function compressImage(dataUrl, maxPx = 900, quality = 0.60) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
@@ -254,14 +254,14 @@ async function uploadPhotoToDrive({ imageBase64, mimeType, filename, fechaFolder
     });
   } catch (_) {}
   // Esperar que el script procese, luego pollear por el URL
-  await sleep(3000);
-  for (let i = 0; i < 10; i++) {
+  await sleep(2000);
+  for (let i = 0; i < 12; i++) {
     try {
       const res  = await fetch(`${APPS_SCRIPT_URL}?action=getPhoto&id=${uploadId}`, { redirect: "follow" });
       const data = await res.json();
       if (data.url) return { url: data.url, thumbnail: data.thumbnail };
     } catch (_) {}
-    await sleep(1500);
+    await sleep(1000);
   }
   return null;
 }
@@ -418,8 +418,9 @@ function PhotoFields({ vals, onChange, eqId, stS }) {
   const valsRef = useRef(vals);
   useEffect(() => { valsRef.current = vals; }, [vals]);
 
-  const [uploading, setUploading] = useState({}); // { "anterior_0": true }
-  const [driveOk,  setDriveOk]   = useState({}); // { "anterior_0": true/false }
+  const [compressing, setCompressing] = useState({}); // { "anterior_0": true }
+  const [uploading,   setUploading]   = useState({}); // { "anterior_0": true }
+  const [driveOk,     setDriveOk]     = useState({}); // { "anterior_0": true/false }
 
   const grupos = [
     { key: "anterior",  label: "📷 Foto estado anterior"  },
@@ -432,6 +433,9 @@ function PhotoFields({ vals, onChange, eqId, stS }) {
     e.target.value = "";
     const slotKey = `${grupo}_${idx}`;
 
+    // Marcar como comprimiendo (feedback inmediato)
+    setCompressing(p => ({ ...p, [slotKey]: true }));
+
     // Leer y comprimir imagen
     const rawUrl = await new Promise(resolve => {
       const r = new FileReader();
@@ -439,6 +443,7 @@ function PhotoFields({ vals, onChange, eqId, stS }) {
       r.readAsDataURL(file);
     });
     const compressed = await compressImage(rawUrl);
+    setCompressing(p => ({ ...p, [slotKey]: false }));
 
     // Mostrar preview local inmediatamente
     {
@@ -493,19 +498,25 @@ function PhotoFields({ vals, onChange, eqId, stS }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: "#3730A3", marginBottom: 6 }}>{label}</div>
           <div style={{ display: "flex", gap: 8 }}>
             {[0, 1, 2].map(idx => {
-              const slot     = (vals?.[key] || [])[idx];
-              const slotKey  = `${key}_${idx}`;
-              const isUp     = uploading[slotKey];
-              const ok       = driveOk[slotKey];
-              const preview  = slot?.preview || (typeof slot === "string" ? slot : null);
-              const driveUrl = slot?.driveUrl;
+              const slot       = (vals?.[key] || [])[idx];
+              const slotKey    = `${key}_${idx}`;
+              const isCompress = compressing[slotKey];
+              const isUp       = uploading[slotKey];
+              const ok         = driveOk[slotKey];
+              const preview    = slot?.preview || (typeof slot === "string" ? slot : null);
+              const driveUrl   = slot?.driveUrl;
 
               return (
-                <div key={idx} style={{ position: "relative", width: 80, height: 80, borderRadius: 10, border: preview ? "2px solid #6366F1" : "1.5px dashed #A5B4FC", background: preview ? "transparent" : "#F5F3FF", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {preview ? (
+                <div key={idx} style={{ position: "relative", width: 80, height: 80, borderRadius: 10, border: preview || isCompress ? "2px solid #6366F1" : "1.5px dashed #A5B4FC", background: preview ? "transparent" : "#F5F3FF", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {isCompress ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", color: "#6366F1", fontSize: 9, gap: 4 }}>
+                      <span style={{ fontSize: 18 }}>⚙️</span>
+                      <span>Procesando…</span>
+                    </div>
+                  ) : preview ? (
                     <>
                       <img src={preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      {/* Badge Drive */}
+                      {/* Badge estado Drive */}
                       <div style={{ position: "absolute", bottom: 2, left: 2, right: 2 }}>
                         {isUp && (
                           <div style={{ background: "rgba(0,0,0,0.65)", borderRadius: 4, padding: "1px 4px", fontSize: 9, color: "#FCD34D", textAlign: "center" }}>⏳ Subiendo…</div>
