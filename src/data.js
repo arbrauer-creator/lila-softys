@@ -40,6 +40,18 @@ export const ZONAS_NIVELES = [
 
 // ── DOSIFICACIONES ────────────────────────────────────────────────────────────
 export const TIPOS_DOSIS    = ["Continuo", "Batch", "Ciclos por tiempo"];
+
+/**
+ * Deriva el Tipo de dosificación automáticamente según reglas de negocio:
+ * 1. Punto PU 12 o PU 40 → "Batch"
+ * 2. Producto contiene "ecosan" (sin distinguir mayúsculas) → "Ciclos por tiempo"
+ * 3. Resto → "Continuo"
+ */
+export function getTipo(producto, punto) {
+  if (punto === "PU 12" || punto === "PU 40") return "Batch";
+  if (String(producto || "").toLowerCase().includes("ecosan")) return "Ciclos por tiempo";
+  return "Continuo";
+}
 export const USOS_DOSIS     = ["Acondicionador","Dispersante","Detacktificante","Biocida","Refinación","Coagulante","Floculante","Antiespumante","pH Control","Otro"];
 export const PUNTOS_DOSIS   = ["Tela","07TqP01","PU 12","PU 40","Silo","Tq Cabecero","Canoa Silo","Entrada clarificador","Succión fanpump","Agua bajo tela","Otro"];
 export const PRODUCTOS_DOSIS = [

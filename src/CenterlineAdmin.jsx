@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { TIPOS_DOSIS, PUNTOS_DOSIS, PRODUCTOS_DOSIS } from "./data.js";
+import { PUNTOS_DOSIS, PRODUCTOS_DOSIS, getTipo } from "./data.js";
 import { saveCenterlines, invalidateCenterlineCache } from "./api.js";
 
 const SKU_LIST = ["700", "715", "716", "753", "767"];
 
 const EMPTY_ROW = (sku) => ({
-  sku, producto: "", punto: "", tipo: "Continuo",
+  sku, producto: "", punto: "", tipo: getTipo("", ""),
   minLH: "", stdLH: "", maxLH: "",
   minKgT: "", stdKgT: "", maxKgT: "",
 });
+
+const TIPO_BADGE = {
+  "Continuo":          { bg: "#DCFCE7", text: "#15803D" },
+  "Batch":             { bg: "#EFF6FF", text: "#1D4ED8" },
+  "Ciclos por tiempo": { bg: "#FEF3C7", text: "#92400E" },
+};
 
 // ── ESTILOS ───────────────────────────────────────────────────────────────────
 const overlay = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" };
@@ -51,20 +57,21 @@ function CLRow({ row, idx, onChange, onDelete }) {
             </select>
           </div>
 
-          {/* Punto + Tipo */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            <div>
-              <label style={lS}>Punto dosificación</label>
-              <select style={iS} value={row.punto} onChange={e => onChange("punto", e.target.value)}>
-                <option value="">Seleccionar…</option>
-                {PUNTOS_DOSIS.map(p => <option key={p}>{p}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lS}>Tipo</label>
-              <select style={iS} value={row.tipo} onChange={e => onChange("tipo", e.target.value)}>
-                {TIPOS_DOSIS.map(t => <option key={t}>{t}</option>)}
-              </select>
+          {/* Punto + Tipo (derivado automáticamente) */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={lS}>Punto dosificación</label>
+            <select style={iS} value={row.punto} onChange={e => onChange("punto", e.target.value)}>
+              <option value="">Seleccionar…</option>
+              {PUNTOS_DOSIS.map(p => <option key={p}>{p}</option>)}
+            </select>
+            <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 10, color: "#64748B", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>Tipo:</span>
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20,
+                background: (TIPO_BADGE[row.tipo] || TIPO_BADGE["Continuo"]).bg,
+                color:      (TIPO_BADGE[row.tipo] || TIPO_BADGE["Continuo"]).text,
+              }}>{row.tipo || "Continuo"}</span>
+              <span style={{ fontSize: 10, color: "#94A3B8" }}>· derivado automáticamente</span>
             </div>
           </div>
 
@@ -113,7 +120,14 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
   const otherRows = rows.filter(r => r.sku !== activeSku);
 
   const updateRow = (idx, field, val) => {
-    const updated = skuRows.map((r, i) => i === idx ? { ...r, [field]: val } : r);
+    const updated = skuRows.map((r, i) => {
+      if (i !== idx) return r;
+      const newRow = { ...r, [field]: val };
+      if (field === "producto" || field === "punto") {
+        newRow.tipo = getTipo(newRow.producto, newRow.punto);
+      }
+      return newRow;
+    });
     setRows([...otherRows, ...updated]);
   };
 

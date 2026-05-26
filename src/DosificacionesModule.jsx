@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TIPOS_DOSIS, USOS_DOSIS, PUNTOS_DOSIS, PRODUCTOS_DOSIS } from "./data.js";
+import { PUNTOS_DOSIS, PRODUCTOS_DOSIS, getTipo } from "./data.js";
 import { saveDosificacion, fetchDosificaciones, todayStr, nowSantiago } from "./api.js";
 
 const S = {
@@ -25,7 +25,7 @@ const TIPO_COLORS = {
 };
 
 const EMPTY_FORM = {
-  producto: "", punto: "", tipo: "Continuo", flujo: "", tiempo: "", periodo: "", hz: "", obs: "",
+  producto: "", punto: "", tipo: getTipo("", ""), flujo: "", tiempo: "", periodo: "", hz: "", obs: "",
 };
 
 // ── UTILIDADES CENTERLINE ─────────────────────────────────────────────────────
@@ -233,8 +233,8 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
   const puntosDisp = getPuntosParaProducto(form.producto, centerlines);
 
   const guardar = async () => {
-    if (!form.producto || !form.punto || !form.tipo) {
-      showToast("⚠️ Completa Producto, Punto y Tipo");
+    if (!form.producto || !form.punto) {
+      showToast("⚠️ Completa Producto y Punto");
       return;
     }
     setSaving(true);
@@ -264,29 +264,31 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
           <label style={S.label}>Producto *</label>
           <ProductSearch
             value={form.producto}
-            onChange={v => setForm(f => ({ ...f, producto: v, punto: "" }))}
+            onChange={v => setForm(f => ({ ...f, producto: v, punto: "", tipo: getTipo(v, "") }))}
           />
           {form.producto === "_otro" && (
             <input style={{ ...S.input, marginTop: 6 }} placeholder="Nombre del producto"
               value={form._prod_otro || ""}
-              onChange={e => setForm(f => ({ ...f, _prod_otro: e.target.value, producto: e.target.value || "_otro" }))} />
+              onChange={e => setForm(f => ({ ...f, _prod_otro: e.target.value, producto: e.target.value || "_otro", tipo: getTipo(e.target.value, f.punto) }))} />
           )}
         </div>
 
-        {/* Punto + Tipo */}
-        <div style={{ ...S.grid2, marginBottom: 10 }}>
-          <div>
-            <label style={S.label}>Punto dosificación *</label>
-            <select style={S.select} value={form.punto} onChange={e => set("punto", e.target.value)}>
-              <option value="">Seleccionar…</option>
-              {puntosDisp.map(p => <option key={p}>{p}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={S.label}>Tipo *</label>
-            <select style={S.select} value={form.tipo} onChange={e => set("tipo", e.target.value)}>
-              {TIPOS_DOSIS.map(t => <option key={t}>{t}</option>)}
-            </select>
+        {/* Punto dosificación + Tipo (derivado automáticamente) */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={S.label}>Punto dosificación *</label>
+          <select style={S.select} value={form.punto}
+            onChange={e => {
+              const val = e.target.value;
+              setForm(f => ({ ...f, punto: val, tipo: getTipo(f.producto, val) }));
+            }}>
+            <option value="">Seleccionar…</option>
+            {puntosDisp.map(p => <option key={p}>{p}</option>)}
+          </select>
+          {/* Tipo derivado — se muestra como badge de sólo lectura */}
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, color: "#64748B", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>Tipo:</span>
+            <span style={S.badge(TIPO_COLORS[form.tipo] || { bg: "#F1F5F9", text: "#64748B" })}>{form.tipo}</span>
+            <span style={{ fontSize: 10, color: "#94A3B8" }}>· derivado automáticamente</span>
           </div>
         </div>
 
@@ -316,11 +318,13 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
                 value={form.periodo} onChange={e => set("periodo", e.target.value)} />
             </div>
           )}
-          <div>
-            <label style={S.label}>Hz bomba</label>
-            <input style={S.input} type="number" min="0" max="60" step="0.1" placeholder="—"
-              value={form.hz} onChange={e => set("hz", e.target.value)} />
-          </div>
+          {form.producto === "Ecofix_108" && (
+            <div>
+              <label style={{ ...S.label, textTransform: "none" }}>Hz Bomba</label>
+              <input style={S.input} type="number" min="0" max="60" step="0.1" placeholder="—"
+                value={form.hz} onChange={e => set("hz", e.target.value)} />
+            </div>
+          )}
         </div>
 
         {/* Obs */}
