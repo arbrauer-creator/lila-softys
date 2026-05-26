@@ -26,8 +26,8 @@ export const PRODUCTOS_NIVELES = [
   { id:"p23", label:"Dispersante Eco Disp 594",          zona:"Dispersión",      unit:"cm"   },
   { id:"p24", label:"Microbiocida Ecosan 403",           zona:"Sala Aditivos",   unit:"cm"   },
   { id:"p25", label:"EcoenzB sala aditivos",             zona:"Sala Aditivos",   unit:"cm"   },
-  { id:"p26", label:"Coagulante Glue Pulp",              zona:"Pulpa",           unit:"cm"   },
-  { id:"p27", label:"Dispersante Glue Pulp",             zona:"Pulpa",           unit:"cm"   },
+  { id:"p26", label:"Coagulante Glue Pulp",              zona:"Eco Fibra",           unit:"cm"   },
+  { id:"p27", label:"Dispersante Glue Pulp",             zona:"Eco Fibra",           unit:"cm"   },
 ];
 
 export const ZONAS_NIVELES = [
@@ -35,7 +35,7 @@ export const ZONAS_NIVELES = [
   { id:"PRP",            bg:"#E0F2F7", border:"#0097A7", text:"#006064", icon:"🔬" },
   { id:"Máquina",    bg:"#E3F2FD", border:"#2196F3", text:"#0D47A1", icon:"⚙️" },
   { id:"Dispersión", bg:"#F3E5F5", border:"#9C27B0", text:"#4A148C", icon:"🔀" },
-  { id:"Pulpa",          bg:"#FFFDE7", border:"#FFC107", text:"#795548", icon:"📦" },
+  { id:"Eco Fibra",          bg:"#FFFDE7", border:"#FFC107", text:"#795548", icon:"📦" },
 ];
 
 // ── DOSIFICACIONES ────────────────────────────────────────────────────────────
