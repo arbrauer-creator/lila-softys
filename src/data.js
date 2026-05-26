@@ -15,7 +15,7 @@ export const PRODUCTOS_NIVELES = [
   { id:"p12", label:"EcoSolv sala aditivo abajo",        zona:"Sala Aditivos",   unit:"cm"   },
   { id:"p13", label:"Ecoenz REF 200 PRP",                zona:"PRP",             unit:"cm"   },
   { id:"p14", label:"Ecoenz REF 200 Máquina",            zona:"Máquina",         unit:"cm"   },
-  { id:"p15", label:"Microbiocida 431",                  zona:"Efluente",        unit:"cm"   },
+  { id:"p15", label:"Microbiocida 431",                  zona:"Sala Aditivos",   unit:"cm"   },
   { id:"p16", label:"Ecofor 771",                        zona:"Sala Aditivos",   unit:"cm"   },
   { id:"p17", label:"Coagulante EcoFix 102",             zona:"Clarificadores",  unit:"cm"   },
   { id:"p18", label:"Floculante EcoFix 108",             zona:"Clarificadores",  unit:"sacos"},
@@ -24,7 +24,7 @@ export const PRODUCTOS_NIVELES = [
   { id:"p21", label:"EcoFix 507",                        zona:"Sala Aditivos",   unit:"cm"   },
   { id:"p22", label:"Coagulante EcoFix 102 Dispersión", zona:"Dispersión",      unit:"cm"   },
   { id:"p23", label:"Dispersante Eco Disp 594",          zona:"Dispersión",      unit:"cm"   },
-  { id:"p24", label:"Microbiocida Ecosan 403",           zona:"Efluente",        unit:"cm"   },
+  { id:"p24", label:"Microbiocida Ecosan 403",           zona:"Sala Aditivos",   unit:"cm"   },
   { id:"p25", label:"EcoenzB sala aditivos",             zona:"Sala Aditivos",   unit:"cm"   },
   { id:"p26", label:"Coagulante Glue Pulp",              zona:"Pulpa",           unit:"cm"   },
   { id:"p27", label:"Dispersante Glue Pulp",             zona:"Pulpa",           unit:"cm"   },
@@ -36,7 +36,6 @@ export const ZONAS_NIVELES = [
   { id:"Máquina",        bg:"#E3F2FD", border:"#2196F3", text:"#0D47A1", icon:"⚙️" },
   { id:"Clarificadores", bg:"#FFF3E0", border:"#FF9800", text:"#E65100", icon:"💧" },
   { id:"Dispersión",     bg:"#F3E5F5", border:"#9C27B0", text:"#4A148C", icon:"🔀" },
-  { id:"Efluente",       bg:"#FCE4EC", border:"#E91E63", text:"#880E4F", icon:"♻️" },
   { id:"Pulpa",          bg:"#FFFDE7", border:"#FFC107", text:"#795548", icon:"📦" },
 ];
 

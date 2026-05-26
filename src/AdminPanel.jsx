@@ -25,7 +25,7 @@ const S = {
   saveBtn:  { margin: "12px 16px 0", width: "calc(100% - 32px)", padding: "13px", borderRadius: 12, background: "#1A2744", color: "#fff", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer" },
 };
 
-const ZONA_ICONS = { "Sala Aditivos":"🧪", "PRP":"🔬", "Máquina":"⚙️", "Clarificadores":"💧", "Dispersión":"🔀", "Efluente":"♻️", "Pulpa":"📦" };
+const ZONA_ICONS = { "Sala Aditivos":"🧪", "PRP":"🔬", "Máquina":"⚙️", "Clarificadores":"💧", "Dispersión":"🔀", "Pulpa":"📦" };
 
 export default function AdminPanel({ config, onClose, onSaved }) {
   // config = { p01: true, p02: false, … }  → true/undefined = activo, false = inactivo

@@ -48,7 +48,7 @@ const MODULES = [
 
 const MODULE_TITLES = {
   lila:    "LILA · Eco-Quim SF TG",
-  niveles: "🛢 Registro de Niveles",
+  niveles: "🛢 Registro de Niveles MP3",
   dash:    "📊 Dashboard Consumos",
   dosis:   "⚙️ Dosificaciones",
 };
