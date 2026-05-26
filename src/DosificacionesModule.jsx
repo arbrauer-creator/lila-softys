@@ -25,7 +25,7 @@ const TIPO_COLORS = {
 };
 
 const EMPTY_FORM = {
-  producto: "", punto: "", tipo: "Continuo", flujo: "", tiempo: "", periodo: "", hz: "", uso: "", obs: "",
+  producto: "", punto: "", tipo: "Continuo", flujo: "", tiempo: "", periodo: "", hz: "", obs: "",
 };
 
 // ── UTILIDADES CENTERLINE ─────────────────────────────────────────────────────
@@ -148,6 +148,78 @@ function SetpointCard({ d }) {
   );
 }
 
+// ── BUSCADOR DE PRODUCTO ──────────────────────────────────────────────────────
+function ProductSearch({ value, onChange }) {
+  const [query,  setQuery]  = useState(value || "");
+  const [open,   setOpen]   = useState(false);
+
+  const todos  = [...PRODUCTOS_DOSIS, "Otro…"];
+  const filtered = query.trim()
+    ? todos.filter(p => p.toLowerCase().includes(query.toLowerCase()))
+    : todos;
+
+  const select = (p) => {
+    if (p === "Otro…") { onChange("_otro"); setQuery(""); }
+    else               { onChange(p);       setQuery(p);  }
+    setOpen(false);
+  };
+
+  // Si el valor externo se resetea (ej: guardar), limpiar query
+  useEffect(() => { if (!value) setQuery(""); }, [value]);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        style={{ ...S.input, paddingRight: 32 }}
+        placeholder="Buscar producto…"
+        value={query}
+        onChange={e => { setQuery(e.target.value); onChange(""); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        autoComplete="off"
+      />
+      {/* Chevron */}
+      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#94A3B8", pointerEvents: "none", fontSize: 12 }}>▾</span>
+      {/* Chip del seleccionado */}
+      {value && value !== "_otro" && (
+        <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#1A2744", background: "#E0F2FE", borderRadius: 8, padding: "2px 10px" }}>{value}</span>
+          <button style={{ background: "none", border: "none", color: "#94A3B8", fontSize: 14, cursor: "pointer", padding: 0, lineHeight: 1 }}
+            onMouseDown={e => { e.preventDefault(); onChange(""); setQuery(""); }}>✕</button>
+        </div>
+      )}
+      {/* Dropdown */}
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, maxHeight: 220, overflowY: "auto", zIndex: 200, boxShadow: "0 6px 20px rgba(0,0,0,0.12)" }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "10px 12px", fontSize: 13, color: "#94A3B8" }}>Sin resultados</div>
+          ) : filtered.map(p => (
+            <div key={p}
+              onMouseDown={e => { e.preventDefault(); select(p); }}
+              style={{ padding: "10px 12px", fontSize: 13, color: "#1E293B", borderBottom: "1px solid #F1F5F9", cursor: "pointer", background: p === value ? "#EFF6FF" : "transparent", fontWeight: p === value ? 600 : 400 }}>
+              {p}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Puntos correspondientes al producto seleccionado (desde centerlines, fallback a lista completa) */
+function getPuntosParaProducto(producto, centerlines) {
+  if (!producto || producto === "_otro" || !centerlines?.rows?.length) return PUNTOS_DOSIS;
+  const np = normStr(producto);
+  const matches = centerlines.rows.filter(r => {
+    const rp = normStr(r.producto);
+    return np.split(" ").some(w => w.length > 3 && rp.includes(w)) ||
+           rp.split(" ").some(w => w.length > 3 && np.includes(w));
+  });
+  if (!matches.length) return PUNTOS_DOSIS;
+  const puntos = [...new Set(matches.map(r => r.punto).filter(Boolean))];
+  return puntos.length ? puntos : PUNTOS_DOSIS;
+}
+
 // ── FORMULARIO NUEVO SETPOINT ──────────────────────────────────────────────────
 function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
   const [form,   setForm]   = useState({ ...EMPTY_FORM });
@@ -155,8 +227,10 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Buscar coincidencias centerline
+  // Coincidencias centerline para referencia
   const clMatches = matchCL(centerlines?.rows, sku, form.producto, form.punto);
+  // Puntos disponibles según producto
+  const puntosDisp = getPuntosParaProducto(form.producto, centerlines);
 
   const guardar = async () => {
     if (!form.producto || !form.punto || !form.tipo) {
@@ -185,16 +259,16 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
       </div>
       <div style={S.cardPad}>
 
-        {/* Producto */}
+        {/* Producto — buscador */}
         <div style={{ marginBottom: 10 }}>
           <label style={S.label}>Producto *</label>
-          <select style={S.select} value={form.producto} onChange={e => set("producto", e.target.value)}>
-            <option value="">Seleccionar…</option>
-            {PRODUCTOS_DOSIS.map(p => <option key={p}>{p}</option>)}
-            <option value="_otro">Otro…</option>
-          </select>
+          <ProductSearch
+            value={form.producto}
+            onChange={v => setForm(f => ({ ...f, producto: v, punto: "" }))}
+          />
           {form.producto === "_otro" && (
-            <input style={{ ...S.input, marginTop: 6 }} placeholder="Nombre del producto" value={form._prod_otro || ""}
+            <input style={{ ...S.input, marginTop: 6 }} placeholder="Nombre del producto"
+              value={form._prod_otro || ""}
               onChange={e => setForm(f => ({ ...f, _prod_otro: e.target.value, producto: e.target.value || "_otro" }))} />
           )}
         </div>
@@ -205,7 +279,7 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
             <label style={S.label}>Punto dosificación *</label>
             <select style={S.select} value={form.punto} onChange={e => set("punto", e.target.value)}>
               <option value="">Seleccionar…</option>
-              {PUNTOS_DOSIS.map(p => <option key={p}>{p}</option>)}
+              {puntosDisp.map(p => <option key={p}>{p}</option>)}
             </select>
           </div>
           <div>
@@ -216,7 +290,7 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
           </div>
         </div>
 
-        {/* Referencia centerline (aparece cuando hay producto + punto seleccionado) */}
+        {/* Referencia centerline */}
         {form.producto && form.producto !== "_otro" && (
           <CLReference clMatches={clMatches} flujo={form.flujo} tipo={form.tipo} sku={sku} />
         )}
@@ -224,7 +298,7 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
         {/* Campos numéricos */}
         <div style={S.grid3}>
           <div>
-            <label style={S.label}>Flujo (ml/min)</label>
+            <label style={{ ...S.label, textTransform: "none" }}>Flujo ml/min</label>
             <input style={S.input} type="number" min="0" step="0.1" placeholder="0.0"
               value={form.flujo} onChange={e => set("flujo", e.target.value)} />
           </div>
@@ -249,14 +323,7 @@ function NuevoSetpointForm({ usuario, onSaved, showToast, sku, centerlines }) {
           </div>
         </div>
 
-        {/* Uso + Obs */}
-        <div style={{ marginTop: 10 }}>
-          <label style={S.label}>Uso</label>
-          <select style={S.select} value={form.uso} onChange={e => set("uso", e.target.value)}>
-            <option value="">Seleccionar…</option>
-            {USOS_DOSIS.map(u => <option key={u}>{u}</option>)}
-          </select>
-        </div>
+        {/* Obs */}
         <div style={{ marginTop: 10 }}>
           <label style={S.label}>Observación</label>
           <textarea style={S.textarea} placeholder="Motivo del cambio, condiciones especiales…"
