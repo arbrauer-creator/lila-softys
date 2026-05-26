@@ -53,7 +53,40 @@ export function getTipo(producto, punto) {
   return "Continuo";
 }
 export const USOS_DOSIS     = ["Acondicionador","Dispersante","Detacktificante","Biocida","Refinación","Coagulante","Floculante","Antiespumante","pH Control","Otro"];
-export const PUNTOS_DOSIS   = ["Tela","07TqP01","07TqP04","DNT","PU 12","PU 40","Silo","Tq Cabecero","Canoa Silo","Floodaf","Saturno","Entrada clarificador","Succión fanpump","Agua bajo tela","Otro"];
+export const PUNTOS_DOSIS   = ["Tela","07TqP01","07TqP04","DNT","PU 12","PU 40","Silo","Tq Cabecero","Canoa Silo","Floodaf","Saturno","Tq Mezcla","Tq P04","TQ07BB06","Fan pump","Agua clarificada","Entrada clarificador","Succión fanpump","Agua bajo tela","Otro"];
+
+// ── COMBINACIONES PRODUCTO+PUNTO (desde hoja Dosificaciones BBDD MP03) ────────
+// Fuente: gid=727307735 — se usan como referencia fija en CenterlineAdmin
+export const COMBOS_DOSIS = [
+  { producto: "Pasivante_1050",       punto: "Tela"                },
+  { producto: "Dispersante_5518",     punto: "07TqP01"             },
+  { producto: "Dispersante_5518",     punto: "DNT"                 },
+  { producto: "Ecopart_T",            punto: "PU 12"               },
+  { producto: "Ecopart_T",            punto: "PU 40"               },
+  { producto: "Ecopart_T",            punto: "Tq Cabecero"         },
+  { producto: "Ecopart_T",            punto: "Floodaf"             },
+  { producto: "Ecopart_T",            punto: "Saturno"             },
+  { producto: "Ecoenz_REF_200",       punto: "PU 12"               },
+  { producto: "Ecoenz_REF_200",       punto: "PU 40"               },
+  { producto: "Ecoenz_C",             punto: "Silo"                },
+  { producto: "Ecoenz_C",             punto: "Agua clarificada"    },
+  { producto: "Detacktificante_1012", punto: "Tq Cabecero"         },
+  { producto: "Ecosan_431",           punto: "Canoa Silo"          },
+  { producto: "Ecosan_431",           punto: "Entrada clarificador"},
+  { producto: "Ecosan_431",           punto: "Succión fanpump"     },
+  { producto: "Ecosan_431",           punto: "Agua bajo tela"      },
+  { producto: "Ecofix_102",           punto: "Floodaf"             },
+  { producto: "Ecofix_102",           punto: "Saturno"             },
+  { producto: "Ecofix_102",           punto: "Tq P04"              },
+  { producto: "Ecofix_102",           punto: "TQ07BB06"            },
+  { producto: "Ecofix_108",           punto: "Floodaf"             },
+  { producto: "Ecofix_108",           punto: "Saturno"             },
+  { producto: "Eco_PC_105",           punto: "PU 12"               },
+  { producto: "Eco_PC_105",           punto: "PU 40"               },
+  { producto: "Ecofor_751",           punto: "Tq Mezcla"           },
+  { producto: "Ecofor_752",           punto: "Tq Mezcla"           },
+  { producto: "Ecofix_507",           punto: "Fan pump"            },
+];
 export const PRODUCTOS_DOSIS = [
   "Pasivante_1050","Dispersante_5518","Ecopart_T","Ecoenz_REF_200","Ecoenz_C",
   "Detacktificante_1012","Ecosan_431","Ecofor751","Ecofor752","Ecofor771",
