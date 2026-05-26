@@ -37,13 +37,12 @@ function newCustomRow() {
 // ── ESTILOS ───────────────────────────────────────────────────────────────────
 
 const overlay = {
-  position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
-  zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+  position: "fixed", inset: 0, zIndex: 300,
+  display: "flex", alignItems: "stretch", justifyContent: "stretch",
 };
 const sheet = {
-  background: "#fff", borderRadius: 16, width: "100%", maxWidth: 820,
-  maxHeight: "92vh", display: "flex", flexDirection: "column",
-  boxShadow: "0 24px 64px rgba(0,0,0,0.35)",
+  background: "#fff", width: "100%", height: "100%",
+  display: "flex", flexDirection: "column",
 };
 const sel = {
   width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 6,
@@ -280,7 +279,7 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div style={overlay}>
       <div style={sheet}>
 
         {/* Header */}
