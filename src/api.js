@@ -141,6 +141,35 @@ export async function fetchDosificaciones() {
   } catch { return []; }
 }
 
+// ── SKU ACTIVO (persiste en localStorage) ────────────────────────────────────
+export function saveSku(sku)  { localStorage.setItem("lila_sku", sku || ""); }
+export function loadSku()     { return localStorage.getItem("lila_sku") || ""; }
+
+// ── CENTERLINES (proxy vía Apps Script → hoja "Calculadora dosificación") ────
+const CL_CACHE_KEY = "lila_centerlines";
+const CL_CACHE_TTL = 15 * 60 * 1000; // 15 min
+
+function _getCachedCenterlines() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CL_CACHE_KEY) || "null");
+    if (s && s.exp > Date.now()) return s.data;
+  } catch {}
+  return null;
+}
+export async function fetchCenterlines() {
+  const cached = _getCachedCenterlines();
+  if (cached) return cached;
+  if (!APPS_SCRIPT_URL) return { rows: [], skus: [] };
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + "?action=getCenterlines", { redirect: "follow" });
+    const data = await res.json();
+    const result = { rows: data.rows || [], skus: data.skus || [] };
+    localStorage.setItem(CL_CACHE_KEY, JSON.stringify({ data: result, exp: Date.now() + CL_CACHE_TTL }));
+    return result;
+  } catch { return { rows: [], skus: [] }; }
+}
+export function invalidateCenterlineCache() { localStorage.removeItem(CL_CACHE_KEY); }
+
 // ── CSV HELPERS (Dashboard — lee desde BBDD MP03 vía Apps Script proxy) ───────
 export async function fetchConsumoRows(days = 30) {
   if (!APPS_SCRIPT_URL) return { headers: [], rows: [] };
