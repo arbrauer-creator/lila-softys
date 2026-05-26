@@ -53,7 +53,7 @@ export function getTipo(producto, punto) {
   return "Continuo";
 }
 export const USOS_DOSIS     = ["Acondicionador","Dispersante","Detacktificante","Biocida","Refinación","Coagulante","Floculante","Antiespumante","pH Control","Otro"];
-export const PUNTOS_DOSIS   = ["Tela","07TqP01","PU 12","PU 40","Silo","Tq Cabecero","Canoa Silo","Entrada clarificador","Succión fanpump","Agua bajo tela","Otro"];
+export const PUNTOS_DOSIS   = ["Tela","07TqP01","07TqP04","DNT","PU 12","PU 40","Silo","Tq Cabecero","Canoa Silo","Floodaf","Saturno","Entrada clarificador","Succión fanpump","Agua bajo tela","Otro"];
 export const PRODUCTOS_DOSIS = [
   "Pasivante_1050","Dispersante_5518","Ecopart_T","Ecoenz_REF_200","Ecoenz_C",
   "Detacktificante_1012","Ecosan_431","Ecofor751","Ecofor752","Ecofor771",
