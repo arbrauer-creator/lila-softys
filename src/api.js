@@ -169,6 +169,19 @@ export async function fetchCenterlines() {
   } catch { return { rows: [], skus: [] }; }
 }
 export function invalidateCenterlineCache() { localStorage.removeItem(CL_CACHE_KEY); }
+export async function saveCenterlines(rows) {
+  invalidateCenterlineCache();
+  if (!APPS_SCRIPT_URL) return null;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ type: "centerlines", rows }),
+      redirect: "follow",
+    });
+    return await res.json();
+  } catch { return null; }
+}
 
 // ── CSV HELPERS (Dashboard — lee desde BBDD MP03 vía Apps Script proxy) ───────
 export async function fetchConsumoRows(days = 30) {

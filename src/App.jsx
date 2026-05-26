@@ -6,6 +6,7 @@ import NivelesModule        from "./NivelesModule.jsx";
 import DashboardModule      from "./DashboardModule.jsx";
 import DosificacionesModule from "./DosificacionesModule.jsx";
 import AdminPanel           from "./AdminPanel.jsx";
+import CenterlineAdmin      from "./CenterlineAdmin.jsx";
 
 // ── ESTILOS GLOBALES ──────────────────────────────────────────────────────────
 const S = {
@@ -15,9 +16,9 @@ const S = {
   headerTitle:{ fontSize: 17, fontWeight: 800, color: "#fff", letterSpacing: -0.3 },
   headerSub:  { display: "flex", alignItems: "center", gap: 8, marginTop: 4 },
   headerUser: { fontSize: 11, color: "#94A3B8" },
-  skuWrap:    { display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.10)", borderRadius: 8, padding: "3px 8px 3px 6px" },
+  skuWrap:    { display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.10)", borderRadius: 8, padding: "4px 10px 4px 8px" },
   skuLabel:   { fontSize: 10, color: "#94A3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 },
-  skuSelect:  { background: "transparent", border: "none", color: "#60A5FA", fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", padding: 0, fontFamily: "inherit" },
+  skuSelect:  { background: "transparent", border: "none", color: "#60A5FA", fontSize: 13, fontWeight: 700, cursor: "pointer", outline: "none", padding: "2px 0", fontFamily: "inherit", minWidth: 48 },
   gearBtn:    { background: "rgba(255,255,255,0.12)", border: "none", color: "#fff", fontSize: 18, width: 34, height: 34, borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
   logoutBtn:  { background: "rgba(255,255,255,0.10)", border: "none", color: "#94A3B8", fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 8, cursor: "pointer" },
   // Bottom nav
@@ -45,6 +46,9 @@ const MODULES = [
   { id: "dash",    icon: "📊", label: "Dashboard"  },
   { id: "dosis",   icon: "⚙️", label: "Dosis"     },
 ];
+
+// SKUs de respaldo — siempre disponibles aunque getCenterlines no responda aún
+const SKU_FALLBACK = ["700", "715", "716", "753", "767"];
 
 const MODULE_TITLES = {
   lila:    "LILA · Eco-Quim SF TG",
@@ -127,6 +131,7 @@ export default function App() {
   const [module,      setModule]      = useState("lila");
   const [config,      setConfig]      = useState({});
   const [showAdmin,   setShowAdmin]   = useState(false);
+  const [showCLAdmin, setShowCLAdmin] = useState(false);
   const [toast,       setToast]       = useState("");
 
   // SKU activo — global por turno, persiste en localStorage
@@ -196,20 +201,19 @@ export default function App() {
                   value={sku}
                   onChange={e => handleSkuChange(e.target.value)}
                 >
-                  <option value="">—</option>
-                  {(centerlines.skus.length > 0 ? centerlines.skus : []).map(s => (
+                  <option value="">— SKU —</option>
+                  {(centerlines.skus.length > 0 ? centerlines.skus : SKU_FALLBACK).map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {usuario.admin && (
-              <button style={S.gearBtn} onClick={() => setShowAdmin(true)} title="Gestión de productos">
-                🛠
-              </button>
-            )}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {usuario.admin && (<>
+              <button style={S.gearBtn} onClick={() => setShowAdmin(true)} title="Gestión de productos">🛠</button>
+              <button style={S.gearBtn} onClick={() => setShowCLAdmin(true)} title="Gestión de centerlines">📏</button>
+            </>)}
             <button style={S.logoutBtn} onClick={handleLogout}>Salir</button>
           </div>
         </div>
@@ -231,12 +235,22 @@ export default function App() {
       {/* Nav inferior */}
       <BottomNav active={module} onChange={setModule} />
 
-      {/* Panel admin */}
+      {/* Panel admin — productos activos/inactivos */}
       {showAdmin && usuario.admin && (
         <AdminPanel
           config={config}
           onClose={() => setShowAdmin(false)}
           onSaved={(newConfig) => { setConfig(newConfig); showToast("✅ Configuración guardada"); }}
+        />
+      )}
+
+      {/* Panel admin — centerlines */}
+      {showCLAdmin && usuario.admin && (
+        <CenterlineAdmin
+          centerlines={centerlines}
+          onClose={() => setShowCLAdmin(false)}
+          onSaved={(cl) => setCenterlines(cl)}
+          showToast={showToast}
         />
       )}
 
