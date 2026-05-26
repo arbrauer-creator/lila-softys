@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PUNTOS_DOSIS, COMBOS_DOSIS, getTipo } from "./data.js";
+import { PUNTOS_DOSIS, PRODUCTOS_DOSIS, COMBOS_DOSIS, getTipo } from "./data.js";
 import { saveCenterlines, invalidateCenterlineCache } from "./api.js";
 
 const SKU_LIST   = ["700", "715", "716", "753", "767"];
@@ -68,7 +68,7 @@ const TH = ({ children, color = "#7C8DB0", align = "center", style = {} }) => (
 );
 
 // ── FILA FIJA (producto+punto de COMBOS_DOSIS, solo valores editables) ─────────
-function StdRow({ punto, tipo, v, onChange }) {
+function StdRow({ producto, punto, tipo, v, onChange, firstInGroup, groupSize }) {
   const tc    = TIPO_BADGE[tipo];
   const tiene = hasData(v);
   return (
@@ -76,6 +76,18 @@ function StdRow({ punto, tipo, v, onChange }) {
       onMouseEnter={e => { if (!tiene) e.currentTarget.style.background = "#F8FAFC"; }}
       onMouseLeave={e => { e.currentTarget.style.background = tiene ? "#F0FDF4" : "#fff"; }}
     >
+      {/* Celda de producto: solo en la primera fila del grupo, con rowSpan */}
+      {firstInGroup && (
+        <td rowSpan={groupSize} style={{
+          padding: "5px 14px", color: "#475569", fontSize: 12, fontWeight: 600,
+          borderBottom: "1px solid #F1F5F9", whiteSpace: "nowrap",
+          borderRight: "1px solid #F1F5F9", verticalAlign: "middle",
+          background: tiene ? "#F0FDF4" : "#F8FAFC",
+        }}>
+          {producto.replace(/_/g, " ")}
+        </td>
+      )}
+      {/* Punto */}
       <td style={{ padding: "5px 14px", color: "#334155", fontSize: 12, borderBottom: "1px solid #F1F5F9", whiteSpace: "nowrap" }}>
         {punto}
       </td>
@@ -115,25 +127,39 @@ function CustomRow({ row, onChange, onDelete }) {
     else                    { onChange("customPunto", false); onChange("punto", val); }
   };
 
+  const custoBorder = "1.5px solid #FDE68A";
+  const custoBack   = "#FFFBEB";
+
   return (
-    <tr style={{ background: "#FFFBEB" }}>
-      <td style={{ padding: "4px 6px 4px 14px", borderBottom: "1px solid #FEF3C7" }}>
+    <tr style={{ background: custoBack }}>
+      {/* Producto */}
+      <td style={{ padding: "4px 6px 4px 14px", borderBottom: "1px solid #FEF3C7", minWidth: 180 }}>
+        <select style={{ ...sel, background: custoBack, border: custoBorder }}
+          value={row.producto} onChange={e => onChange("producto", e.target.value)}>
+          <option value="">Producto…</option>
+          {PRODUCTOS_DOSIS.map(p => (
+            <option key={p} value={p}>{p.replace(/_/g, " ")}</option>
+          ))}
+        </select>
+      </td>
+      {/* Punto */}
+      <td style={{ padding: "4px 6px", borderBottom: "1px solid #FEF3C7", minWidth: 160 }}>
         {row.customPunto ? (
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <input
               placeholder="Nombre del punto…"
               value={row.punto}
               onChange={e => onChange("punto", e.target.value)}
-              style={{ ...sel, flex: 1, background: "#FFFBEB", border: "1.5px solid #FDE68A" }}
+              style={{ ...sel, flex: 1, background: custoBack, border: custoBorder }}
               onFocus={e => { e.target.style.border = "1.5px solid #F59E0B"; }}
-              onBlur={e =>  { e.target.style.border = "1.5px solid #FDE68A"; }}
+              onBlur={e =>  { e.target.style.border = custoBorder; }}
             />
             <button onClick={() => { onChange("customPunto", false); onChange("punto", ""); }}
               title="Volver al selector"
               style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 13, padding: "2px 4px", flexShrink: 0 }}>↩</button>
           </div>
         ) : (
-          <select style={{ ...sel, background: "#FFFBEB", border: "1.5px solid #FDE68A" }}
+          <select style={{ ...sel, background: custoBack, border: custoBorder }}
             value={row.punto} onChange={e => handlePuntoSelect(e.target.value)}>
             <option value="">Punto…</option>
             {PUNTOS_STD.map(p => <option key={p} value={p}>{p}</option>)}
@@ -141,6 +167,7 @@ function CustomRow({ row, onChange, onDelete }) {
           </select>
         )}
       </td>
+      {/* Tipo */}
       <td style={{ padding: "4px 8px", borderBottom: "1px solid #FEF3C7", textAlign: "center" }}>
         {tc
           ? <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: tc.bg, color: tc.text, whiteSpace: "nowrap" }}>{tipo}</span>
@@ -318,7 +345,8 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10, background: "#1A2744" }}>
               <tr>
-                <TH align="left" style={{ minWidth: 160, paddingLeft: 14 }}>Punto dosificación</TH>
+                <TH align="left" style={{ minWidth: 180, paddingLeft: 14 }}>Producto</TH>
+                <TH align="left" style={{ minWidth: 150 }}>Punto dosificación</TH>
                 <TH style={{ minWidth: 110 }}>Tipo</TH>
                 <TH color="#7DD3FC" style={{ minWidth: 80 }}>Mín kg/t</TH>
                 <TH color="#7DD3FC" style={{ minWidth: 80 }}>Std kg/t</TH>
@@ -329,31 +357,25 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
             <tbody>
 
               {/* ── Combinaciones desde COMBOS_DOSIS ── */}
-              {byProduct.flatMap(({ producto, puntos }) => [
-                <tr key={`h|${producto}`}>
-                  <td colSpan={6} style={{
-                    padding: "7px 14px", background: "#F1F5F9",
-                    fontWeight: 700, fontSize: 11, color: "#475569",
-                    borderTop: "2px solid #E2E8F0",
-                  }}>
-                    {producto.replace(/_/g, " ")}
-                  </td>
-                </tr>,
-                ...puntos.map(punto => (
+              {byProduct.flatMap(({ producto, puntos }) =>
+                puntos.map((punto, qi) => (
                   <StdRow
                     key={`${producto}|${punto}`}
+                    producto={producto}
                     punto={punto}
                     tipo={getTipo(producto, punto)}
                     v={stdMap[`${producto}|${punto}`]}
                     onChange={(field, val) => setStdVal(activeSku, producto, punto, field, val)}
+                    firstInGroup={qi === 0}
+                    groupSize={puntos.length}
                   />
-                )),
-              ])}
+                ))
+              )}
 
               {/* ── Filas personalizadas ── */}
               {custRows.length > 0 && (
                 <tr>
-                  <td colSpan={6} style={{
+                  <td colSpan={7} style={{
                     padding: "7px 14px", background: "#FEF9C3",
                     fontWeight: 700, fontSize: 11, color: "#92400E",
                     borderTop: "2px solid #FDE68A",

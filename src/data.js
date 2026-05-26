@@ -68,6 +68,7 @@ export const COMBOS_DOSIS = [
   { producto: "Ecopart_T",            punto: "Saturno"             },
   { producto: "Ecoenz_REF_200",       punto: "PU 12"               },
   { producto: "Ecoenz_REF_200",       punto: "PU 40"               },
+  { producto: "Ecoenz_C",             punto: "PU 12"               },
   { producto: "Ecoenz_C",             punto: "Silo"                },
   { producto: "Ecoenz_C",             punto: "Agua clarificada"    },
   { producto: "Detacktificante_1012", punto: "Tq Cabecero"         },
