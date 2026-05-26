@@ -394,7 +394,11 @@ function LoginScreen({ usuarios, onLogin, error, loading }) {
         <label style={S.loginLabel}>Usuario</label>
         <select style={S.loginInput} value={nombre} onChange={e => setNombre(e.target.value)}>
           <option value="">Seleccionar usuario...</option>
-          {[...usuarios].sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map(u => <option key={u.nombre} value={u.nombre}>{u.nombre}{u.admin ? " ★" : ""}</option>)}
+          {[...usuarios].sort((a, b) => {
+              if (a.nombre === "Invitado") return 1;
+              if (b.nombre === "Invitado") return -1;
+              return a.nombre.localeCompare(b.nombre, "es");
+            }).map(u => <option key={u.nombre} value={u.nombre}>{u.nombre}{u.admin ? " ★" : ""}</option>)}
         </select>
         <label style={S.loginLabel}>PIN</label>
         <input style={{ ...S.loginInput, fontSize: 24, letterSpacing: 10, textAlign: "center" }}
