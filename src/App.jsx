@@ -919,16 +919,12 @@ export default function LilaApp() {
   const [usuarios, setUsuarios]     = useState([]);
   const [loadingU, setLoadingU]     = useState(true);
   const [loginError, setLoginError] = useState("");
-  const [tab, setTab]               = useState("form");
   const [version, setVersion]       = useState("lila1");
   const [turno, setTurno]           = useState("AM");
   const [fecha, setFecha]           = useState(todayStr());
   const [obsGen, setObsGen]         = useState("");
   const [vals, setVals]             = useState({});
-  const [registros, setRegistros]   = useState([]);
   const [toast, setToast]           = useState("");
-  const [filTec, setFilTec]         = useState("");
-  const [filTurno, setFilTurno]     = useState("");
 
   useEffect(() => {
     fetchUsuarios().then(u => {
@@ -943,12 +939,6 @@ export default function LilaApp() {
     }).finally(() => setLoadingU(false));
   }, []);
 
-  useEffect(() => {
-    window.storage?.get("lila_registros").then(r => {
-      if (r?.value) { try { setRegistros(JSON.parse(r.value)); } catch {} }
-    }).catch(() => {});
-  }, []);
-
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
   const handleVal = useCallback((key, v) => setVals(prev => ({ ...prev, [key]: v })), []);
 
@@ -959,7 +949,7 @@ export default function LilaApp() {
   };
 
   const handleLogout = () => {
-    clearSession(); setUsuario(null); setVals({}); setObsGen(""); setTab("form"); setLoginError("");
+    clearSession(); setUsuario(null); setVals({}); setObsGen(""); setLoginError("");
   };
 
   if (!usuario && (loadingU || usuarios.length > 0)) {
@@ -1008,34 +998,10 @@ export default function LilaApp() {
       });
     }));
     const reg = { id: Date.now(), ts: nowSantiago(), fecha, turno, tecnico: usuario?.nombre || "", version, obs_gen: obsGen, tasks };
-    const newRegs = [reg, ...registros];
-    setRegistros(newRegs);
-    window.storage?.set("lila_registros", JSON.stringify(newRegs)).catch(() => {});
     sendToSheets(reg);
     setVals({}); setObsGen(""); setFecha(todayStr());
     showToast("✅ Registro guardado" + (APPS_SCRIPT_URL ? " · enviando a Sheets…" : ""));
-    setTab("hist");
   };
-
-  const exportCSV = () => {
-    if (!registros.length) { showToast("Sin registros para exportar"); return; }
-    const header = "Timestamp,Fecha,Turno,Version,Tecnico,Obs_General,Sector,Equipo,N_Equipo,Subtarea,Descripcion,Estado,Observacion_Tarea";
-    const rows = registros.flatMap(r => r.tasks.map(t =>
-      [r.ts, r.fecha, r.turno, r.version || "lila1", r.tecnico, r.obs_gen, t.sector, t.equipo, t.n_equipo, t.subtarea, t.desc, t.estado, t.obs]
-        .map(v => `"${String(v || "").replace(/"/g, '""')}"`).join(",")
-    ));
-    const csv = [header, ...rows].join("\n");
-    const a = document.createElement("a");
-    a.href = "data:text/csv;charset=utf-8,﻿" + encodeURIComponent(csv);
-    a.download = `LILA_Softys_${todayStr()}.csv`;
-    a.click();
-    showToast("📥 CSV exportado");
-  };
-
-  const filtered = registros.filter(r => (!filTec || r.tecnico === filTec) && (!filTurno || r.turno === filTurno));
-  const allTasks = registros.flatMap(r => r.tasks);
-  const stats = STATE_LABELS.reduce((acc, l) => { acc[l] = allTasks.filter(t => t.estado === l).length; return acc; }, {});
-  const tecnicosList = usuarios.length > 0 ? usuarios.map(u => u.nombre) : [];
 
   return (
     <div style={S.app}>
@@ -1050,30 +1016,20 @@ export default function LilaApp() {
             </div>
             <div style={S.headerSub}>
               {usuario && <span>{usuario.nombre}{usuario.admin ? " ★" : ""} · </span>}
-              {tab === "form" ? `${doneCount}/${total} tareas · ${pctGlobal}%` : tab === "dash" ? "Dashboard" : "Historial"}
+              {doneCount}/{total} tareas · {pctGlobal}%
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {tab === "form" && doneCount > 0 && <div style={{ fontSize: 22, fontWeight: 800, color: pctGlobal === 100 ? "#4ADE80" : "#60A5FA" }}>{pctGlobal}%</div>}
+            {doneCount > 0 && <div style={{ fontSize: 22, fontWeight: 800, color: pctGlobal === 100 ? "#4ADE80" : "#60A5FA" }}>{pctGlobal}%</div>}
             <button onClick={handleLogout} style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "#94A3B8", fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 8, cursor: "pointer" }}>Salir</button>
           </div>
         </div>
-        {tab === "form" && (
-          <div style={{ marginTop: 8, height: 3, background: "rgba(255,255,255,0.15)", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${pctGlobal}%`, background: pctGlobal === 100 ? "#4ADE80" : "#60A5FA", borderRadius: 2, transition: "width 0.4s" }} />
-          </div>
-        )}
+        <div style={{ marginTop: 8, height: 3, background: "rgba(255,255,255,0.15)", borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pctGlobal}%`, background: pctGlobal === 100 ? "#4ADE80" : "#60A5FA", borderRadius: 2, transition: "width 0.4s" }} />
+        </div>
       </div>
 
-      <div style={S.tabBar}>
-        {[["form", "📋 Registro"], ["dash", "📊 Dashboard"], ["hist", "🕓 Historial"]].map(([v, l]) => (
-          <button key={v} style={S.tab(tab === v)} onClick={() => setTab(v)}>{l}</button>
-        ))}
-      </div>
-
-      {/* ── FORMULARIO ── */}
-      {tab === "form" && (
-        <div style={S.page}>
+      <div style={S.page}>
           <div style={S.card}>
             <div style={S.cardPad}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Versión de ronda</div>
@@ -1129,101 +1085,6 @@ export default function LilaApp() {
             </>
           )}
         </div>
-      )}
-
-      {/* ── DASHBOARD ── */}
-      {tab === "dash" && (
-        <div style={S.page}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-            <div style={S.metricCard("#EFF6FF")}><div style={S.metricVal}>{registros.length}</div><div style={S.metricLbl}>Registros</div></div>
-            <div style={S.metricCard("#F0FDF4")}><div style={{ ...S.metricVal, color: "#15803D" }}>{stats["Hecho"] || 0}</div><div style={S.metricLbl}>Hechos</div></div>
-            <div style={S.metricCard("#FEF2F2")}><div style={{ ...S.metricVal, color: "#B91C1C" }}>{stats["No OK"] || 0}</div><div style={S.metricLbl}>No OK</div></div>
-            <div style={S.metricCard("#FFFBEB")}><div style={{ ...S.metricVal, color: "#92400E" }}>{stats["Pendiente"] || 0}</div><div style={S.metricLbl}>Pendientes</div></div>
-          </div>
-          <div style={S.card}>
-            <div style={{ ...S.cardPad, paddingBottom: 6 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 12 }}>Progreso por sector</div>
-              {SECTORES.map(sec => {
-                const secTasks = registros.flatMap(r => r.tasks.filter(t => t.sector === sec.label));
-                const secDone = secTasks.filter(t => t.estado === "Hecho" || t.estado === "N/A").length;
-                const pct = secTasks.length > 0 ? Math.round(secDone / secTasks.length * 100) : 0;
-                const st = SECTOR_STYLES[sec.id];
-                return (
-                  <div key={sec.id} style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                      <span style={{ color: "#334155", fontWeight: 500 }}>{st.icon} {sec.label}</span>
-                      <span style={{ color: "#94A3B8" }}>{secDone}/{secTasks.length}</span>
-                    </div>
-                    <div style={S.progBar()}><div style={S.progFill(pct)} /></div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div style={S.card}>
-            <div style={S.cardPad}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 12 }}>Actividad reciente</div>
-              {registros.slice(0, 5).map(r => (
-                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #F1F5F9" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{r.turno === "AM" ? "🌅" : "🌙"}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1E293B" }}>{r.tecnico}<span style={S.versionBadge(r.version || "lila1")}>{r.version === "lila2" ? "LILA 2" : "Completa"}</span></div>
-                    <div style={{ fontSize: 11, color: "#94A3B8" }}>{fmtDate(r.fecha)} · Turno {r.turno}</div>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#64748B" }}>{r.tasks.filter(t => t.estado === "Hecho").length}/{r.tasks.length}</div>
-                </div>
-              ))}
-              {!registros.length && <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 13, padding: "16px 0" }}>Sin registros aún</div>}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── HISTORIAL ── */}
-      {tab === "hist" && (
-        <div style={S.page}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <select style={{ ...S.select, flex: 1 }} value={filTec} onChange={e => setFilTec(e.target.value)}>
-              <option value="">Todos los técnicos</option>
-              {tecnicosList.map(t => <option key={t}>{t}</option>)}
-            </select>
-            <select style={{ ...S.select, width: 110 }} value={filTurno} onChange={e => setFilTurno(e.target.value)}>
-              <option value="">Todos</option><option value="AM">AM</option><option value="PM">PM</option>
-            </select>
-            <button onClick={exportCSV} style={{ padding: "8px 12px", background: "#1A2744", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>📥 CSV</button>
-          </div>
-          {filtered.length === 0
-            ? <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 14, padding: "40px 0" }}><div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>Sin registros aún</div>
-            : filtered.map(r => {
-              const ok = r.tasks.filter(t => t.estado === "Hecho").length;
-              const nok = r.tasks.filter(t => t.estado === "No OK").length;
-              const pend = r.tasks.filter(t => t.estado === "Pendiente").length;
-              const pct = r.tasks.length > 0 ? Math.round(ok / r.tasks.length * 100) : 0;
-              return (
-                <div key={r.id} style={S.histCard}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: r.turno === "AM" ? "#FEF9C3" : "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{r.turno === "AM" ? "🌅" : "🌙"}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B" }}>{r.tecnico}<span style={S.versionBadge(r.version || "lila1")}>{r.version === "lila2" ? "LILA 2" : "Completa"}</span></div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: pct === 100 ? "#15803D" : "#3B82F6" }}>{pct}%</div>
-                      </div>
-                      <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{fmtDate(r.fecha)} · Turno {r.turno}</div>
-                      <div style={{ ...S.progBar(), marginBottom: 6 }}><div style={S.progFill(pct)} /></div>
-                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                        <span style={S.badge(STATE_COLORS["Hecho"])}>✓ {ok} hechos</span>
-                        {nok > 0 && <span style={S.badge(STATE_COLORS["No OK"])}>✗ {nok} no ok</span>}
-                        {pend > 0 && <span style={S.badge(STATE_COLORS["Pendiente"])}>⏳ {pend} pend.</span>}
-                      </div>
-                      {r.obs_gen && <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>💬 {r.obs_gen}</div>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          }
-        </div>
-      )}
 
       <div style={S.toast(!!toast)}>{toast}</div>
     </div>
