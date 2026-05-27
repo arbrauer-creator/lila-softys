@@ -300,13 +300,29 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       });
     });
 
-    await saveCenterlines(allRows);
-    invalidateCenterlineCache();
-    const skus = [...new Set(allRows.map(r => r.sku))].filter(Boolean);
-    onSaved({ rows: allRows, skus });
-    showToast("✅ Centerlines guardados");
-    setSaving(false);
-    onClose();
+    if (allRows.length === 0) {
+      showToast("⚠️ Ingresa al menos un valor antes de guardar");
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const result = await saveCenterlines(allRows);
+      if (result && result.ok === false) {
+        showToast("❌ Error del servidor: " + (result.error || "desconocido"));
+        setSaving(false);
+        return;
+      }
+      invalidateCenterlineCache();
+      const skus = [...new Set(allRows.map(r => r.sku))].filter(Boolean);
+      onSaved({ rows: allRows, skus });
+      showToast(`✅ ${allRows.length} filas guardadas correctamente`);
+      setSaving(false);
+      onClose();
+    } catch (err) {
+      showToast("❌ Error de conexión: " + err.message);
+      setSaving(false);
+    }
   };
 
   // ── Derivados ─────────────────────────────────────────────────────────────────
