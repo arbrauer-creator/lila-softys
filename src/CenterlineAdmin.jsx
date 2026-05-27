@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PUNTOS_DOSIS, PRODUCTOS_DOSIS, COMBOS_DOSIS, getTipo } from "./data.js";
-import { saveCenterlines, invalidateCenterlineCache } from "./api.js";
+import { saveCenterlines, invalidateCenterlineCache, fetchCenterlines } from "./api.js";
 
 const SKU_LIST   = ["700", "715", "716", "753", "767"];
 const PUNTOS_STD = PUNTOS_DOSIS.filter(p => p !== "Otro");
@@ -196,8 +196,9 @@ function CustomRow({ row, onChange, onDelete }) {
 
 // ── PANEL PRINCIPAL ────────────────────────────────────────────────────────────
 export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToast }) {
-  const [activeSku, setActiveSku] = useState(SKU_LIST[0]);
-  const [saving,    setSaving]    = useState(false);
+  const [activeSku,  setActiveSku]  = useState(SKU_LIST[0]);
+  const [saving,     setSaving]     = useState(false);
+  const [comentario, setComentario] = useState("");
 
   // Valores estándar: { [sku]: { ["prod|punto"]: { minKgT, stdKgT, maxKgT } } }
   const [allStd, setAllStd] = useState(() => {
@@ -224,6 +225,28 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
     });
     return init;
   });
+
+  // Al montar: carga datos frescos desde la API para reflejar el último guardado
+  useEffect(() => {
+    const comboKeys = new Set(COMBOS_DOSIS.map(c => `${c.producto}|${c.punto}`));
+    fetchCenterlines().then(cl => {
+      if (!cl?.rows?.length) return;
+      const newStd = {};
+      SKU_LIST.forEach(s => { newStd[s] = initStdValues(s, cl.rows); });
+      setAllStd(newStd);
+      const newCustom = {};
+      SKU_LIST.forEach(s => {
+        newCustom[s] = cl.rows
+          .filter(r => String(r.sku) === String(s) && !comboKeys.has(`${r.producto}|${r.punto}`))
+          .map(r => ({
+            producto: r.producto || "", punto: r.punto || "",
+            customPunto: !PUNTOS_STD.includes(r.punto),
+            minKgT: r.minKgT || "", stdKgT: r.stdKgT || "", maxKgT: r.maxKgT || "",
+          }));
+      });
+      setAllCustom(newCustom);
+    });
+  }, []);
 
   // ── Mutadores ────────────────────────────────────────────────────────────────
 
@@ -267,13 +290,13 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       COMBOS_DOSIS.forEach(({ producto, punto }) => {
         const v = stdM[`${producto}|${punto}`];
         if (!hasData(v)) return;
-        allRows.push({ sku, producto, punto, tipo: getTipo(producto, punto), minLH: "", stdLH: "", maxLH: "", ...v });
+        allRows.push({ sku, producto, punto, tipo: getTipo(producto, punto), minLH: "", stdLH: "", maxLH: "", ...v, comentario });
       });
 
       // Filas custom con datos
       custR.forEach(r => {
         if (!r.producto || !r.punto || !hasData(r)) return;
-        allRows.push({ sku, producto: r.producto, punto: r.punto, tipo: getTipo(r.producto, r.punto), minLH: "", stdLH: "", maxLH: "", minKgT: r.minKgT, stdKgT: r.stdKgT, maxKgT: r.maxKgT });
+        allRows.push({ sku, producto: r.producto, punto: r.punto, tipo: getTipo(r.producto, r.punto), minLH: "", stdLH: "", maxLH: "", minKgT: r.minKgT, stdKgT: r.stdKgT, maxKgT: r.maxKgT, comentario });
       });
     });
 
@@ -397,8 +420,28 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
           </table>
         </div>
 
+        {/* Comentario */}
+        <div style={{ padding: "10px 20px 0", borderTop: "1px solid #F1F5F9", flexShrink: 0 }}>
+          <label style={{ fontSize: 10, fontWeight: 700, color: "#64748B", display: "block", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 }}>
+            Comentario / motivo del cambio
+          </label>
+          <textarea
+            placeholder="Ej: Ajuste por cambio de gramaje, nueva campaña SKU 700…"
+            value={comentario}
+            onChange={e => setComentario(e.target.value)}
+            style={{
+              width: "100%", border: "1.5px solid #E2E8F0", borderRadius: 8,
+              padding: "8px 12px", fontSize: 13, fontFamily: "inherit",
+              resize: "vertical", minHeight: 56, boxSizing: "border-box",
+              outline: "none", color: "#1E293B", background: "#F8FAFC",
+            }}
+            onFocus={e => { e.target.style.border = "1.5px solid #3B82F6"; e.target.style.background = "#fff"; }}
+            onBlur={e  => { e.target.style.border = "1.5px solid #E2E8F0"; e.target.style.background = "#F8FAFC"; }}
+          />
+        </div>
+
         {/* Footer */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid #F1F5F9", display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+        <div style={{ padding: "10px 20px 12px", display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
           <button onClick={addCustomRow} style={{
             padding: "10px 18px", borderRadius: 10, background: "#FFFBEB",
             color: "#92400E", fontWeight: 700, fontSize: 13,
