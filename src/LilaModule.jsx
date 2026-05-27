@@ -103,7 +103,8 @@ function PhotoFields({ vals, onChange, eqId, stS }) {
             {[0,1,2].map(idx => {
               const slot=(vals?.[key]||[])[idx]; const slotKey=`${key}_${idx}`;
               const isCompress=compressing[slotKey]; const isUp=uploading[slotKey]; const ok=driveOk[slotKey];
-              const preview=slot?.preview||(typeof slot==="string"?slot:null); const driveUrl=slot?.driveUrl;
+              // Usa thumbnail como fallback cuando se restaura un borrador (preview base64 no se guarda)
+              const preview=slot?.preview||slot?.thumbnail||(typeof slot==="string"?slot:null); const driveUrl=slot?.driveUrl;
               return (
                 <div key={idx} style={{ position:"relative", width:80, height:80, borderRadius:10, border:preview||isCompress?"2px solid #6366F1":"1.5px dashed #A5B4FC", background:preview?"transparent":"#F5F3FF", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                   {isCompress ? (
@@ -423,6 +424,24 @@ function SectorBlock({ sec, vals, onChange, version, turno }) {
   );
 }
 
+// ── DRAFT HELPERS ─────────────────────────────────────────────────────────────
+// Elimina los base64 de las fotos antes de guardar en localStorage (pueden ser muy pesados).
+// Los driveUrls/thumbnails se conservan y se incluyen correctamente en el guardado final.
+function stripPreviews(vals) {
+  const out = {};
+  Object.entries(vals).forEach(([key, v]) => {
+    if (v && v.fotos) {
+      out[key] = { ...v, fotos: {
+        anterior:  (v.fotos.anterior  || []).map(p => p ? { driveUrl: p.driveUrl || null, thumbnail: p.thumbnail || null } : null),
+        posterior: (v.fotos.posterior || []).map(p => p ? { driveUrl: p.driveUrl || null, thumbnail: p.thumbnail || null } : null),
+      }};
+    } else {
+      out[key] = v;
+    }
+  });
+  return out;
+}
+
 // ── LILA MODULE (export) ──────────────────────────────────────────────────────
 export default function LilaModule({ usuario, showToast }) {
   const [version, setVersion] = useState("lila1");
@@ -431,6 +450,35 @@ export default function LilaModule({ usuario, showToast }) {
   const [obsGen,  setObsGen]  = useState("");
   const [vals,    setVals]    = useState({});
   const handleVal = useCallback((key, v) => setVals(prev => ({ ...prev, [key]: v })), []);
+
+  // ── Borrador automático ──────────────────────────────────────────────────────
+  const draftKey = `lila_draft_${usuario?.nombre || "anon"}`;
+  const [pendingDraft, setPendingDraft] = useState(null);   // borrador disponible para restaurar
+  const [draftSavedAt, setDraftSavedAt] = useState(null);   // hora del último auto-guardado
+
+  // Al montar: cargar borrador existente si lo hay
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft?.ts) setPendingDraft(draft);
+    } catch (_) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-guardar borrador 2 s después de cada cambio
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const draft = { ts: nowSantiago(), version, turno, fecha, obsGen, vals: stripPreviews(vals) };
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+        setDraftSavedAt(new Date());
+      } catch (_) {}
+    }, 2000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version, turno, fecha, obsGen, vals]);
 
   const filtrarPorPermiso = (secs) => {
     if (!usuario || usuario.admin) return secs;
@@ -464,17 +512,63 @@ export default function LilaModule({ usuario, showToast }) {
     }));
     const reg = { id:Date.now(), ts:nowSantiago(), fecha, turno, tecnico:usuario?.nombre||"", version, obs_gen:obsGen, tasks };
     sendLilaRecord(reg);
+    try { localStorage.removeItem(draftKey); } catch(_) {}
+    setDraftSavedAt(null);
     setVals({}); setObsGen(""); setFecha(todayStr());
     showToast("✅ Registro guardado · enviando a Sheets…");
   };
 
   return (
     <div style={S.page}>
+
+      {/* Banner restaurar borrador */}
+      {pendingDraft && (
+        <div style={{ background:"#EFF6FF", border:"1.5px solid #BFDBFE", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+            <span style={{ fontSize:20, flexShrink:0 }}>📝</span>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#1D4ED8" }}>Borrador disponible</div>
+              <div style={{ fontSize:11, color:"#3B82F6", marginTop:2 }}>
+                {pendingDraft.fecha} · Turno {pendingDraft.turno} · {pendingDraft.version === "lila2" ? "LILA 2" : "LILA Completa"}
+                {" · guardado a las "}{(pendingDraft.ts||"").replace("T"," ").slice(11,16)}
+              </div>
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:8, marginTop:10 }}>
+            <button
+              onClick={() => {
+                setVersion(pendingDraft.version || "lila1");
+                setTurno(pendingDraft.turno     || "AM");
+                setFecha(pendingDraft.fecha     || todayStr());
+                setObsGen(pendingDraft.obsGen   || "");
+                setVals(pendingDraft.vals       || {});
+                setPendingDraft(null);
+                showToast("📝 Borrador restaurado");
+              }}
+              style={{ flex:1, padding:"9px 0", borderRadius:9, background:"#1D4ED8", color:"#fff", border:"none", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+              Restaurar borrador
+            </button>
+            <button
+              onClick={() => { try { localStorage.removeItem(draftKey); } catch(_){} setPendingDraft(null); }}
+              style={{ padding:"9px 16px", borderRadius:9, background:"transparent", color:"#64748B", border:"1.5px solid #E2E8F0", fontWeight:600, fontSize:13, cursor:"pointer" }}>
+              Descartar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Barra progreso */}
       <div style={{ background:"#fff", borderRadius:12, boxShadow:"0 1px 4px rgba(0,0,0,0.07)", marginBottom:12, padding:"10px 14px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#64748B", marginBottom:4 }}>
           <span>{doneCount}/{total} tareas completadas</span>
-          <span style={{ fontWeight:700, color:pctGlobal===100?"#16A34A":"#3B82F6" }}>{pctGlobal}%</span>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {draftSavedAt && (
+              <span style={{ fontSize:10, color:"#94A3B8" }}>
+                💾 {draftSavedAt.toLocaleTimeString("es-CL", { hour:"2-digit", minute:"2-digit" })}
+              </span>
+            )}
+            <span style={{ fontWeight:700, color:pctGlobal===100?"#16A34A":"#3B82F6" }}>{pctGlobal}%</span>
+          </div>
         </div>
         <div style={S.progBar()}><div style={S.progFill(pctGlobal)}/></div>
       </div>
