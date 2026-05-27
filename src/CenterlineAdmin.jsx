@@ -11,6 +11,20 @@ const TIPO_BADGE = {
   "Ciclos por tiempo": { bg: "#FEF3C7", text: "#92400E" },
 };
 
+// Paleta de colores por grupo de producto (izquierda + fondo de la celda de nombre)
+const GROUP_PALETTE = [
+  { accent: "#3B82F6", cellBg: "#EFF6FF" },  // blue
+  { accent: "#8B5CF6", cellBg: "#F5F3FF" },  // purple
+  { accent: "#10B981", cellBg: "#ECFDF5" },  // emerald
+  { accent: "#F59E0B", cellBg: "#FFFBEB" },  // amber
+  { accent: "#EF4444", cellBg: "#FFF1F2" },  // red
+  { accent: "#0EA5E9", cellBg: "#F0F9FF" },  // sky
+  { accent: "#F97316", cellBg: "#FFF7ED" },  // orange
+  { accent: "#A855F7", cellBg: "#FDF4FF" },  // fuchsia
+  { accent: "#14B8A6", cellBg: "#F0FDFA" },  // teal
+  { accent: "#84CC16", cellBg: "#F7FEE7" },  // lime
+];
+
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
 /** Mapa { "prod|punto": { minKgT, stdKgT, maxKgT } } desde rows de centerlines */
@@ -31,7 +45,7 @@ function hasData(v) {
 }
 
 function newCustomRow() {
-  return { producto: "", punto: "", customPunto: false, minKgT: "", stdKgT: "", maxKgT: "" };
+  return { producto: "", punto: "", customPunto: false, customProducto: false, minKgT: "", stdKgT: "", maxKgT: "" };
 }
 
 // ── ESTILOS ───────────────────────────────────────────────────────────────────
@@ -68,9 +82,12 @@ const TH = ({ children, color = "#7C8DB0", align = "center", style = {} }) => (
 );
 
 // ── FILA FIJA (producto+punto de COMBOS_DOSIS, solo valores editables) ─────────
-function StdRow({ producto, punto, tipo, v, onChange, firstInGroup, groupSize }) {
+function StdRow({ producto, punto, tipo, v, onChange, firstInGroup, groupSize, groupIndex }) {
   const tc    = TIPO_BADGE[tipo];
   const tiene = hasData(v);
+  const pal   = GROUP_PALETTE[groupIndex % GROUP_PALETTE.length];
+  // Separador visible entre grupos (no en el primero para no chocar con el header)
+  const sepTop = firstInGroup && groupIndex > 0 ? "2px solid #CBD5E1" : undefined;
   return (
     <tr style={{ background: tiene ? "#F0FDF4" : "#fff" }}
       onMouseEnter={e => { if (!tiene) e.currentTarget.style.background = "#F8FAFC"; }}
@@ -79,25 +96,28 @@ function StdRow({ producto, punto, tipo, v, onChange, firstInGroup, groupSize })
       {/* Celda de producto: solo en la primera fila del grupo, con rowSpan */}
       {firstInGroup && (
         <td rowSpan={groupSize} style={{
-          padding: "5px 14px", color: "#475569", fontSize: 12, fontWeight: 600,
+          padding: "5px 14px", fontSize: 12, fontWeight: 700,
           borderBottom: "1px solid #F1F5F9", whiteSpace: "nowrap",
-          borderRight: "1px solid #F1F5F9", verticalAlign: "middle",
-          background: tiene ? "#F0FDF4" : "#F8FAFC",
+          borderRight: "1px solid #E2E8F0", verticalAlign: "middle",
+          borderLeft: `4px solid ${pal.accent}`,
+          borderTop: sepTop,
+          background: pal.cellBg,
+          color: "#1E293B",
         }}>
           {producto.replace(/_/g, " ")}
         </td>
       )}
       {/* Punto */}
-      <td style={{ padding: "5px 14px", color: "#334155", fontSize: 12, borderBottom: "1px solid #F1F5F9", whiteSpace: "nowrap" }}>
+      <td style={{ padding: "5px 14px", color: "#334155", fontSize: 12, borderBottom: "1px solid #F1F5F9", whiteSpace: "nowrap", borderTop: sepTop }}>
         {punto}
       </td>
-      <td style={{ padding: "5px 8px", borderBottom: "1px solid #F1F5F9", textAlign: "center" }}>
+      <td style={{ padding: "5px 8px", borderBottom: "1px solid #F1F5F9", textAlign: "center", borderTop: sepTop }}>
         <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: tc.bg, color: tc.text, whiteSpace: "nowrap" }}>
           {tipo}
         </span>
       </td>
       {["minKgT", "stdKgT", "maxKgT"].map(field => (
-        <td key={field} style={{ padding: "3px 4px", borderBottom: "1px solid #F1F5F9" }}>
+        <td key={field} style={{ padding: "3px 4px", borderBottom: "1px solid #F1F5F9", borderTop: sepTop }}>
           <input
             type="number" step="0.001" min="0" placeholder="—"
             value={(v && v[field]) || ""}
@@ -111,7 +131,7 @@ function StdRow({ producto, punto, tipo, v, onChange, firstInGroup, groupSize })
           />
         </td>
       ))}
-      <td style={{ width: 32, borderBottom: "1px solid #F1F5F9" }} />
+      <td style={{ width: 32, borderBottom: "1px solid #F1F5F9", borderTop: sepTop }} />
     </tr>
   );
 }
@@ -122,6 +142,10 @@ function CustomRow({ row, onChange, onDelete }) {
   const tc    = tipo ? TIPO_BADGE[tipo] : null;
   const tiene = hasData(row) && !!row.punto && !!row.producto;
 
+  const handleProductoSelect = (val) => {
+    if (val === "__otro_prod__") { onChange("customProducto", true);  onChange("producto", ""); }
+    else                        { onChange("customProducto", false); onChange("producto", val); }
+  };
   const handlePuntoSelect = (val) => {
     if (val === "__otro__") { onChange("customPunto", true);  onChange("punto", ""); }
     else                    { onChange("customPunto", false); onChange("punto", val); }
@@ -134,13 +158,30 @@ function CustomRow({ row, onChange, onDelete }) {
     <tr style={{ background: custoBack }}>
       {/* Producto */}
       <td style={{ padding: "4px 6px 4px 14px", borderBottom: "1px solid #FEF3C7", minWidth: 180 }}>
-        <select style={{ ...sel, background: custoBack, border: custoBorder }}
-          value={row.producto} onChange={e => onChange("producto", e.target.value)}>
-          <option value="">Producto…</option>
-          {PRODUCTOS_DOSIS.map(p => (
-            <option key={p} value={p}>{p.replace(/_/g, " ")}</option>
-          ))}
-        </select>
+        {row.customProducto ? (
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <input
+              placeholder="Nombre del producto…"
+              value={row.producto}
+              onChange={e => onChange("producto", e.target.value)}
+              style={{ ...sel, flex: 1, background: custoBack, border: custoBorder }}
+              onFocus={e => { e.target.style.border = "1.5px solid #F59E0B"; }}
+              onBlur={e =>  { e.target.style.border = custoBorder; }}
+            />
+            <button onClick={() => { onChange("customProducto", false); onChange("producto", ""); }}
+              title="Volver al selector"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", fontSize: 13, padding: "2px 4px", flexShrink: 0 }}>↩</button>
+          </div>
+        ) : (
+          <select style={{ ...sel, background: custoBack, border: custoBorder }}
+            value={row.producto} onChange={e => handleProductoSelect(e.target.value)}>
+            <option value="">Producto…</option>
+            {PRODUCTOS_DOSIS.map(p => (
+              <option key={p} value={p}>{p.replace(/_/g, " ")}</option>
+            ))}
+            <option value="__otro_prod__">✏️ Otro producto…</option>
+          </select>
+        )}
       </td>
       {/* Punto */}
       <td style={{ padding: "4px 6px", borderBottom: "1px solid #FEF3C7", minWidth: 160 }}>
@@ -215,12 +256,13 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       init[s] = (centerlines?.rows || [])
         .filter(r => String(r.sku) === String(s) && !comboKeys.has(`${r.producto}|${r.punto}`))
         .map(r => ({
-          producto:    r.producto || "",
-          punto:       r.punto    || "",
-          customPunto: !PUNTOS_STD.includes(r.punto),
-          minKgT:      r.minKgT   || "",
-          stdKgT:      r.stdKgT   || "",
-          maxKgT:      r.maxKgT   || "",
+          producto:       r.producto || "",
+          punto:          r.punto    || "",
+          customPunto:    !PUNTOS_STD.includes(r.punto),
+          customProducto: !PRODUCTOS_DOSIS.includes(r.producto),
+          minKgT:         r.minKgT   || "",
+          stdKgT:         r.stdKgT   || "",
+          maxKgT:         r.maxKgT   || "",
         }));
     });
     return init;
@@ -239,9 +281,13 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
         newCustom[s] = cl.rows
           .filter(r => String(r.sku) === String(s) && !comboKeys.has(`${r.producto}|${r.punto}`))
           .map(r => ({
-            producto: r.producto || "", punto: r.punto || "",
-            customPunto: !PUNTOS_STD.includes(r.punto),
-            minKgT: r.minKgT || "", stdKgT: r.stdKgT || "", maxKgT: r.maxKgT || "",
+            producto:       r.producto || "",
+            punto:          r.punto    || "",
+            customPunto:    !PUNTOS_STD.includes(r.punto),
+            customProducto: !PRODUCTOS_DOSIS.includes(r.producto),
+            minKgT:         r.minKgT   || "",
+            stdKgT:         r.stdKgT   || "",
+            maxKgT:         r.maxKgT   || "",
           }));
       });
       setAllCustom(newCustom);
@@ -396,7 +442,7 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
             <tbody>
 
               {/* ── Combinaciones desde COMBOS_DOSIS ── */}
-              {byProduct.flatMap(({ producto, puntos }) =>
+              {byProduct.flatMap(({ producto, puntos }, gi) =>
                 puntos.map((punto, qi) => (
                   <StdRow
                     key={`${producto}|${punto}`}
@@ -407,6 +453,7 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
                     onChange={(field, val) => setStdVal(activeSku, producto, punto, field, val)}
                     firstInGroup={qi === 0}
                     groupSize={puntos.length}
+                    groupIndex={gi}
                   />
                 ))
               )}
