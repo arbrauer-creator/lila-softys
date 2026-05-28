@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PUNTOS_DOSIS, PRODUCTOS_DOSIS, COMBOS_DOSIS, getTipo } from "./data.js";
 import { saveCenterlines, invalidateCenterlineCache, fetchCenterlines } from "./api.js";
 
@@ -239,7 +239,9 @@ function CustomRow({ row, onChange, onDelete }) {
 export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToast }) {
   const [activeSku,  setActiveSku]  = useState(SKU_LIST[0]);
   const [saving,     setSaving]     = useState(false);
+  const [importing,  setImporting]  = useState(false);
   const [comentario, setComentario] = useState("");
+  const fileInputRef = useRef(null);
 
   // Valores estándar: { [sku]: { ["prod|punto"]: { minKgT, stdKgT, maxKgT } } }
   const [allStd, setAllStd] = useState(() => {
@@ -321,6 +323,148 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       ...prev,
       [activeSku]: (prev[activeSku] || []).filter((_, i) => i !== idx),
     }));
+  };
+
+  // ── Descargar plantilla Excel ─────────────────────────────────────────────────
+  const downloadTemplate = async () => {
+    const XLSX = await import("xlsx");
+    const headers = ["SKU", "Producto", "Punto", "Tipo", "Min kg/t", "Std kg/t", "Máx kg/t"];
+    const dataRows = [];
+
+    SKU_LIST.forEach(sku => {
+      // Combos estándar con valores actuales
+      COMBOS_DOSIS.forEach(({ producto, punto }) => {
+        const v = allStd[sku]?.[`${producto}|${punto}`] || {};
+        dataRows.push([
+          sku,
+          producto.replace(/_/g, " "),
+          punto,
+          getTipo(producto, punto),
+          v.minKgT ?? "",
+          v.stdKgT ?? "",
+          v.maxKgT ?? "",
+        ]);
+      });
+      // Filas personalizadas actuales
+      (allCustom[sku] || []).forEach(r => {
+        if (!r.producto || !r.punto) return;
+        dataRows.push([
+          sku,
+          r.producto.replace(/_/g, " "),
+          r.punto,
+          getTipo(r.producto, r.punto),
+          r.minKgT ?? "",
+          r.stdKgT ?? "",
+          r.maxKgT ?? "",
+        ]);
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+
+    // Hoja principal
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    ws["!cols"] = [
+      { wch: 8  }, // SKU
+      { wch: 26 }, // Producto
+      { wch: 22 }, // Punto
+      { wch: 20 }, // Tipo
+      { wch: 11 }, // Min kg/t
+      { wch: 11 }, // Std kg/t
+      { wch: 11 }, // Máx kg/t
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, "Centerlines");
+
+    // Hoja de referencia con valores válidos
+    const maxLen = Math.max(PRODUCTOS_DOSIS.length, PUNTOS_DOSIS.length, SKU_LIST.length);
+    const wsRef = XLSX.utils.aoa_to_sheet([
+      ["Productos válidos", "Puntos válidos", "SKUs válidos"],
+      ...Array.from({ length: maxLen }, (_, i) => [
+        PRODUCTOS_DOSIS[i]?.replace(/_/g, " ") ?? "",
+        PUNTOS_DOSIS[i] ?? "",
+        SKU_LIST[i] ?? "",
+      ]),
+    ]);
+    wsRef["!cols"] = [{ wch: 26 }, { wch: 22 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, wsRef, "Referencia");
+
+    const fecha = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `centerlines_${fecha}.xlsx`);
+    showToast("📥 Plantilla descargada");
+  };
+
+  // ── Importar desde Excel ──────────────────────────────────────────────────────
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+    setImporting(true);
+    try {
+      const XLSX    = await import("xlsx");
+      const buf     = await file.arrayBuffer();
+      const wb      = XLSX.read(buf, { type: "array" });
+      const ws      = wb.Sheets[wb.SheetNames[0]];
+      const rows    = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+
+      // Fila 0 = encabezados → saltar
+      const dataRows = rows.slice(1).filter(r => r[0] && r[1] && r[2]);
+
+      const comboKeys = new Set(COMBOS_DOSIS.map(c => `${c.producto}|${c.punto}`));
+      const newStd    = {};
+      SKU_LIST.forEach(s => { newStd[s] = { ...(allStd[s] || {}) }; });
+      const newCustom = {};
+      SKU_LIST.forEach(s => { newCustom[s] = [...(allCustom[s] || [])]; });
+
+      let loaded = 0, skipped = 0;
+
+      dataRows.forEach(row => {
+        const skuRaw      = String(row[0] ?? "").trim();
+        const productoRaw = String(row[1] ?? "").trim();
+        const puntoRaw    = String(row[2] ?? "").trim();
+        const minKgT      = String(row[4] ?? "").trim();
+        const stdKgT      = String(row[5] ?? "").trim();
+        const maxKgT      = String(row[6] ?? "").trim();
+
+        if (!SKU_LIST.includes(skuRaw)) { skipped++; return; }
+
+        // Normaliza nombre de producto (con o sin guiones bajos)
+        const producto = PRODUCTOS_DOSIS.find(p =>
+          p.replace(/_/g, " ").toLowerCase() === productoRaw.toLowerCase() ||
+          p.toLowerCase() === productoRaw.toLowerCase()
+        ) ?? productoRaw;
+
+        const punto = puntoRaw;
+        const key   = `${producto}|${punto}`;
+        const v     = { minKgT, stdKgT, maxKgT };
+
+        if (comboKeys.has(key)) {
+          newStd[skuRaw][key] = v;
+        } else {
+          const existIdx = newCustom[skuRaw].findIndex(r => r.producto === producto && r.punto === punto);
+          const rowData  = {
+            producto, punto,
+            customPunto:    !PUNTOS_STD.includes(punto),
+            customProducto: !PRODUCTOS_DOSIS.includes(producto),
+            ...v,
+          };
+          if (existIdx >= 0) { newCustom[skuRaw][existIdx] = rowData; }
+          else               { newCustom[skuRaw].push(rowData); }
+        }
+        loaded++;
+      });
+
+      setAllStd(newStd);
+      setAllCustom(newCustom);
+      showToast(
+        loaded > 0
+          ? `✅ ${loaded} filas importadas${skipped ? ` · ${skipped} ignoradas (SKU inválido)` : ""}`
+          : "⚠️ No se encontraron filas válidas en el archivo"
+      );
+    } catch (err) {
+      showToast("❌ Error al leer Excel: " + err.message);
+    } finally {
+      setImporting(false);
+    }
   };
 
   // ── Guardar ──────────────────────────────────────────────────────────────────
@@ -501,6 +645,34 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
             onFocus={e => { e.target.style.border = "1.5px solid #3B82F6"; e.target.style.background = "#fff"; }}
             onBlur={e  => { e.target.style.border = "1.5px solid #E2E8F0"; e.target.style.background = "#F8FAFC"; }}
           />
+        </div>
+
+        {/* Excel tools */}
+        <div style={{ padding: "8px 20px", borderTop: "1px solid #F1F5F9", display: "flex", gap: 8, alignItems: "center", flexShrink: 0, background: "#FAFAFA" }}>
+          <button onClick={downloadTemplate} style={{
+            padding: "7px 14px", borderRadius: 9, background: "#F0FDF4",
+            color: "#15803D", fontWeight: 700, fontSize: 12,
+            border: "1.5px solid #86EFAC", cursor: "pointer", whiteSpace: "nowrap",
+          }}>
+            📥 Descargar plantilla
+          </button>
+          <label style={{
+            padding: "7px 14px", borderRadius: 9,
+            background: importing ? "#F1F5F9" : "#EFF6FF",
+            color: importing ? "#94A3B8" : "#1D4ED8", fontWeight: 700, fontSize: 12,
+            border: `1.5px solid ${importing ? "#E2E8F0" : "#BFDBFE"}`,
+            cursor: importing ? "not-allowed" : "pointer", whiteSpace: "nowrap", display: "inline-block",
+          }}>
+            {importing ? "⏳ Importando…" : "📤 Cargar desde Excel"}
+            <input
+              ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv"
+              style={{ display: "none" }} disabled={importing}
+              onChange={handleExcelUpload}
+            />
+          </label>
+          <span style={{ fontSize: 10, color: "#94A3B8", flex: 1, lineHeight: 1.3 }}>
+            La plantilla incluye todos los SKUs · Al importar se fusionan los valores sin borrar los no incluidos
+          </span>
         </div>
 
         {/* Footer */}
