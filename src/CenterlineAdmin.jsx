@@ -415,15 +415,18 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       const newCustom = {};
       SKU_LIST.forEach(s => { newCustom[s] = [...(allCustom[s] || [])]; });
 
+      // Normaliza decimales: acepta coma (1,5) o punto (1.5)
+      const normNum = (v) => String(v ?? "").trim().replace(",", ".");
+
       let loaded = 0, skipped = 0;
 
       dataRows.forEach(row => {
         const skuRaw      = String(row[0] ?? "").trim();
         const productoRaw = String(row[1] ?? "").trim();
         const puntoRaw    = String(row[2] ?? "").trim();
-        const minKgT      = String(row[4] ?? "").trim();
-        const stdKgT      = String(row[5] ?? "").trim();
-        const maxKgT      = String(row[6] ?? "").trim();
+        const minKgT      = normNum(row[4]);
+        const stdKgT      = normNum(row[5]);
+        const maxKgT      = normNum(row[6]);
 
         if (!SKU_LIST.includes(skuRaw)) { skipped++; return; }
 
