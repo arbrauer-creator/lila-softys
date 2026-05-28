@@ -76,7 +76,18 @@ export async function fetchUsuarios() {
   try {
     const res  = await fetch(APPS_SCRIPT_URL + "?action=getUsers", { redirect: "follow", signal: ctrl.signal });
     const data = await res.json();
-    return data.users || [];
+    const raw  = Array.isArray(data.users) ? data.users : [];
+    // Normaliza nombres de propiedades para tolerar variaciones de encabezado en la hoja
+    // (Nombre/nombre/name, PIN/pin/Pin, Admin/admin, etc.)
+    return raw
+      .filter(u => u && typeof u === "object")
+      .map(u => ({
+        nombre:    u.nombre    ?? u.Nombre    ?? u.name      ?? u.Name      ?? "",
+        pin:       String(u.pin ?? u.Pin ?? u.PIN ?? u.pin ?? ""),
+        admin:     !!(u.admin  ?? u.Admin     ?? u.isAdmin   ?? false),
+        secciones: u.secciones ?? u.Secciones ?? {},
+      }))
+      .filter(u => u.nombre !== "");
   } catch { return []; }
   finally { clearTimeout(timer); }
 }
