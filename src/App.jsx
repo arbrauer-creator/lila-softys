@@ -104,10 +104,11 @@ function LoginScreen({ usuarios, onLogin, error, loading, loadError, onRetry }) 
         <select style={S.loginInput} value={nombre} onChange={e => setNombre(e.target.value)}>
           <option value="">Seleccionar usuario…</option>
           {[...usuarios]
+            .filter(u => u && u.nombre)
             .sort((a, b) => {
               if (a.nombre === "Invitado") return 1;
               if (b.nombre === "Invitado") return -1;
-              return a.nombre.localeCompare(b.nombre, "es");
+              return (a.nombre || "").localeCompare(b.nombre || "", "es");
             })
             .map(u => (
               <option key={u.nombre} value={u.nombre}>{u.nombre}{u.admin ? " ★" : ""}</option>
