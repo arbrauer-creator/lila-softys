@@ -79,12 +79,18 @@ export async function fetchUsuarios() {
     const raw  = Array.isArray(data.users) ? data.users : [];
     // Normaliza nombres de propiedades para tolerar variaciones de encabezado en la hoja
     // (Nombre/nombre/name, PIN/pin/Pin, Admin/admin, etc.)
+    const parseBool = (v) => {
+      if (typeof v === "boolean") return v;
+      if (typeof v === "number")  return v !== 0;
+      const s = String(v ?? "").toLowerCase().trim();
+      return s === "true" || s === "verdadero" || s === "1" || s === "sí" || s === "si";
+    };
     return raw
       .filter(u => u && typeof u === "object")
       .map(u => ({
         nombre:    u.nombre    ?? u.Nombre    ?? u.name      ?? u.Name      ?? "",
-        pin:       String(u.pin ?? u.Pin ?? u.PIN ?? u.pin ?? ""),
-        admin:     !!(u.admin  ?? u.Admin     ?? u.isAdmin   ?? false),
+        pin:       String(u.pin ?? u.Pin ?? u.PIN ?? ""),
+        admin:     parseBool(u.admin ?? u.Admin ?? u.isAdmin),
         secciones: u.secciones ?? u.Secciones ?? {},
       }))
       .filter(u => u.nombre !== "");
