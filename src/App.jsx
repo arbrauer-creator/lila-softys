@@ -163,8 +163,13 @@ export default function App() {
 
   const handleLogin = (nombre, pin) => {
     const user = usuarios.find(u => u.nombre === nombre && String(u.pin) === String(pin));
-    if (user) { saveSession(user); setUsuario(user); setLoginError(""); }
-    else       { setLoginError("PIN incorrecto. Intenta de nuevo."); }
+    if (user) {
+      try { saveSession(user); } catch(_) {}
+      setUsuario(user);
+      setLoginError("");
+    } else {
+      setLoginError("PIN incorrecto. Intenta de nuevo.");
+    }
   };
 
   const handleLogout = () => {

@@ -10,7 +10,7 @@ export const GID_DOSIS    = "727307735";
 // ── SESSION (12 h) ─────────────────────────────────────────────────────────────
 const SESSION_KEY = "lila_session";
 const SESSION_TTL = 12 * 60 * 60 * 1000;
-export function saveSession(user)  { localStorage.setItem(SESSION_KEY, JSON.stringify({ user, exp: Date.now() + SESSION_TTL })); }
+export function saveSession(user)  { try { localStorage.setItem(SESSION_KEY, JSON.stringify({ user, exp: Date.now() + SESSION_TTL })); } catch(_) {} }
 export function clearSession()     { localStorage.removeItem(SESSION_KEY); }
 export function loadSession() {
   try {
