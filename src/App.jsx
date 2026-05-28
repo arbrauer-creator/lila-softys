@@ -58,7 +58,7 @@ const MODULE_TITLES = {
 };
 
 // ── LOGIN SCREEN ───────────────────────────────────────────────────────────────
-function LoginScreen({ usuarios, onLogin, error, loading }) {
+function LoginScreen({ usuarios, onLogin, error, loading, loadError, onRetry }) {
   const [nombre, setNombre] = useState("");
   const [pin,    setPin]    = useState("");
   const submit = () => { if (nombre && pin) onLogin(nombre, pin); };
@@ -92,10 +92,27 @@ function LoginScreen({ usuarios, onLogin, error, loading }) {
           onKeyDown={e => e.key === "Enter" && submit()}
         />
         {error && <div style={S.loginError}>⚠️ {error}</div>}
-        {loading
-          ? <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 13, padding: "8px 0", marginTop: 20 }}>Cargando usuarios…</div>
-          : <button style={S.loginBtn(!nombre || !pin)} onClick={submit} disabled={!nombre || !pin}>Ingresar →</button>
-        }
+        {loading ? (
+          <div style={{ textAlign: "center", color: "#94A3B8", fontSize: 13, padding: "8px 0", marginTop: 20 }}>
+            Cargando usuarios…
+          </div>
+        ) : loadError ? (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ ...S.loginError, marginTop: 0 }}>
+              ⚠️ No se pudieron cargar los usuarios. Verifica tu conexión.
+            </div>
+            <button
+              style={{ ...S.loginBtn(false), marginTop: 10, background: "#1A2744" }}
+              onClick={onRetry}
+            >
+              🔄 Reintentar
+            </button>
+          </div>
+        ) : (
+          <button style={S.loginBtn(!nombre || !pin)} onClick={submit} disabled={!nombre || !pin}>
+            Ingresar →
+          </button>
+        )}
       </div>
     </div>
   );
@@ -128,6 +145,8 @@ export default function App() {
   const [loadingU,    setLoadingU]    = useState(true);
   const [loginError,  setLoginError]  = useState("");
 
+  const [errorU,      setErrorU]      = useState(false);
+
   const [module,      setModule]      = useState("lila");
   const [config,      setConfig]      = useState({});
   const [showAdmin,   setShowAdmin]   = useState(false);
@@ -140,16 +159,20 @@ export default function App() {
   const [centerlines, setCenterlines] = useState({ rows: [], skus: [] });
 
   // Cargar usuarios
-  useEffect(() => {
+  const loadUsuarios = () => {
+    setLoadingU(true);
+    setErrorU(false);
     fetchUsuarios().then(u => {
+      if (u.length === 0) setErrorU(true);
       setUsuarios(u);
       const sess = loadSession();
       if (sess) {
         const actualizado = u.find(x => x.nombre === sess.nombre);
-        if (actualizado) { saveSession(actualizado); setUsuario(actualizado); }
+        if (actualizado) { try { saveSession(actualizado); } catch(_) {} setUsuario(actualizado); }
       }
     }).finally(() => setLoadingU(false));
-  }, []);
+  };
+  useEffect(() => { loadUsuarios(); }, []);
 
   // Cargar config
   useEffect(() => { fetchConfig().then(c => setConfig(c)); }, []);
@@ -181,7 +204,14 @@ export default function App() {
     return (
       <>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        <LoginScreen usuarios={usuarios} onLogin={handleLogin} error={loginError} loading={loadingU} />
+        <LoginScreen
+          usuarios={usuarios}
+          onLogin={handleLogin}
+          error={loginError}
+          loading={loadingU}
+          loadError={errorU}
+          onRetry={loadUsuarios}
+        />
       </>
     );
   }

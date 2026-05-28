@@ -71,11 +71,14 @@ export async function sendLilaRecord(reg) {
 // ── USUARIOS ──────────────────────────────────────────────────────────────────
 export async function fetchUsuarios() {
   if (!APPS_SCRIPT_URL) return [];
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000); // 12 s timeout
   try {
-    const res  = await fetch(APPS_SCRIPT_URL + "?action=getUsers", { redirect: "follow" });
+    const res  = await fetch(APPS_SCRIPT_URL + "?action=getUsers", { redirect: "follow", signal: ctrl.signal });
     const data = await res.json();
     return data.users || [];
   } catch { return []; }
+  finally { clearTimeout(timer); }
 }
 
 // ── CONFIG (productos activos/inactivos) ──────────────────────────────────────
