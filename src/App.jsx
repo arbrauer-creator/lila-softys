@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component } from "react";
 import { saveSession, loadSession, clearSession, fetchUsuarios, fetchConfig,
          fetchCenterlines, saveSku, loadSku } from "./api.js";
 import LilaModule           from "./LilaModule.jsx";
@@ -7,6 +7,35 @@ import DashboardModule      from "./DashboardModule.jsx";
 import DosificacionesModule from "./DosificacionesModule.jsx";
 import AdminPanel           from "./AdminPanel.jsx";
 import CenterlineAdmin      from "./CenterlineAdmin.jsx";
+
+// ── ERROR BOUNDARY ─────────────────────────────────────────────────────────────
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      const msg = String(this.state.error);
+      return (
+        <div style={{ padding: 24, fontFamily: "monospace", background: "#FFF1F2", minHeight: "100vh" }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>⚠️</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#B91C1C", marginBottom: 12 }}>
+            Error en la aplicación
+          </div>
+          <pre style={{ fontSize: 12, color: "#7F1D1D", background: "#FEE2E2", padding: 12, borderRadius: 8, overflowX: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {msg}
+          </pre>
+          <button
+            style={{ marginTop: 16, padding: "10px 20px", borderRadius: 10, background: "#1A2744", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+            onClick={() => window.location.reload()}
+          >
+            🔄 Recargar aplicación
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ── ESTILOS GLOBALES ──────────────────────────────────────────────────────────
 const S = {
@@ -202,7 +231,7 @@ export default function App() {
   // Pantalla de login
   if (!usuario) {
     return (
-      <>
+      <ErrorBoundary>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <LoginScreen
           usuarios={usuarios}
@@ -212,12 +241,13 @@ export default function App() {
           loadError={errorU}
           onRetry={loadUsuarios}
         />
-      </>
+      </ErrorBoundary>
     );
   }
 
   // ── App Shell ──────────────────────────────────────────────────────────────
   return (
+    <ErrorBoundary>
     <div style={S.app}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
@@ -292,5 +322,6 @@ export default function App() {
       {/* Toast */}
       <div style={S.toast(!!toast)}>{toast}</div>
     </div>
+    </ErrorBoundary>
   );
 }
