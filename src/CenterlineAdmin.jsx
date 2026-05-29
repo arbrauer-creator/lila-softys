@@ -331,6 +331,9 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
     const headers = ["SKU", "Producto", "Punto", "Tipo", "Min kg/t", "Std kg/t", "Máx kg/t"];
     const dataRows = [];
 
+    // Convierte string a número para que Excel muestre el separador decimal local
+    const toNum = (s) => { const n = parseFloat(String(s ?? "").trim().replace(",", ".")); return isNaN(n) ? "" : n; };
+
     SKU_LIST.forEach(sku => {
       // Combos estándar con valores actuales
       COMBOS_DOSIS.forEach(({ producto, punto }) => {
@@ -340,9 +343,9 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
           producto.replace(/_/g, " "),
           punto,
           getTipo(producto, punto),
-          v.minKgT ?? "",
-          v.stdKgT ?? "",
-          v.maxKgT ?? "",
+          toNum(v.minKgT),
+          toNum(v.stdKgT),
+          toNum(v.maxKgT),
         ]);
       });
       // Filas personalizadas actuales
@@ -353,9 +356,9 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
           r.producto.replace(/_/g, " "),
           r.punto,
           getTipo(r.producto, r.punto),
-          r.minKgT ?? "",
-          r.stdKgT ?? "",
-          r.maxKgT ?? "",
+          toNum(r.minKgT),
+          toNum(r.stdKgT),
+          toNum(r.maxKgT),
         ]);
       });
     });
@@ -409,14 +412,15 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       // Fila 0 = encabezados → saltar
       const dataRows = rows.slice(1).filter(r => r[0] && r[1] && r[2]);
 
-      const comboKeys = new Set(COMBOS_DOSIS.map(c => `${c.producto}|${c.punto}`));
       const newStd    = {};
       SKU_LIST.forEach(s => { newStd[s] = { ...(allStd[s] || {}) }; });
       const newCustom = {};
       SKU_LIST.forEach(s => { newCustom[s] = [...(allCustom[s] || [])]; });
 
-      // Normaliza decimales: acepta coma (1,5) o punto (1.5)
+      // Normaliza decimales: coma → punto. Si SheetJS ya leyó número JS, String() da punto.
       const normNum = (v) => String(v ?? "").trim().replace(",", ".");
+      // Normaliza nombre: sin guiones bajos, sin mayúsculas, sin espacios extra
+      const norm    = (s) => String(s ?? "").replace(/_/g, " ").toLowerCase().trim();
 
       let loaded = 0, skipped = 0;
 
@@ -430,24 +434,29 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
 
         if (!SKU_LIST.includes(skuRaw)) { skipped++; return; }
 
-        // Normaliza nombre de producto (con o sin guiones bajos)
-        const producto = PRODUCTOS_DOSIS.find(p =>
-          p.replace(/_/g, " ").toLowerCase() === productoRaw.toLowerCase() ||
-          p.toLowerCase() === productoRaw.toLowerCase()
-        ) ?? productoRaw;
+        const v = { minKgT, stdKgT, maxKgT };
 
-        const punto = puntoRaw;
-        const key   = `${producto}|${punto}`;
-        const v     = { minKgT, stdKgT, maxKgT };
+        // Busca en COMBOS_DOSIS con comparación normalizada
+        // (resuelve inconsistencia de casing: EcoFix_102 en PRODUCTOS_DOSIS vs Ecofix_102 en COMBOS_DOSIS)
+        const matchCombo = COMBOS_DOSIS.find(c =>
+          norm(c.producto) === norm(productoRaw) &&
+          norm(c.punto)    === norm(puntoRaw)
+        );
 
-        if (comboKeys.has(key)) {
-          newStd[skuRaw][key] = v;
+        if (matchCombo) {
+          // Usa la key canónica de COMBOS_DOSIS para que coincida con allStd
+          newStd[skuRaw][`${matchCombo.producto}|${matchCombo.punto}`] = v;
         } else {
-          const existIdx = newCustom[skuRaw].findIndex(r => r.producto === producto && r.punto === punto);
-          const rowData  = {
+          // Fila personalizada: usa nombre canónico de PRODUCTOS_DOSIS si existe
+          const producto = PRODUCTOS_DOSIS.find(p => norm(p) === norm(productoRaw)) ?? productoRaw;
+          const punto    = puntoRaw;
+          const existIdx = newCustom[skuRaw].findIndex(r =>
+            norm(r.producto) === norm(productoRaw) && norm(r.punto) === norm(puntoRaw)
+          );
+          const rowData = {
             producto, punto,
             customPunto:    !PUNTOS_STD.includes(punto),
-            customProducto: !PRODUCTOS_DOSIS.includes(producto),
+            customProducto: !PRODUCTOS_DOSIS.some(p => norm(p) === norm(productoRaw)),
             ...v,
           };
           if (existIdx >= 0) { newCustom[skuRaw][existIdx] = rowData; }
