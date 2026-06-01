@@ -27,6 +27,19 @@ const GROUP_PALETTE = [
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
+/**
+ * Limpia un valor kg/t: devuelve "" si es NaN o claramente fuera de rango
+ * (> 10 000 indica un número corrupto de importaciones anteriores con SheetJS).
+ * Rango real de dosificación química: 0,001 – ~100 kg/t.
+ */
+function sanitizeKgT(v) {
+  if (v === "" || v === null || v === undefined) return "";
+  const n = parseFloat(String(v).replace(",", "."));
+  if (isNaN(n)) return "";
+  if (Math.abs(n) > 10000) return ""; // valor claramente corrupto → descartar
+  return String(v);
+}
+
 /** Mapa { "prod|punto": { minKgT, stdKgT, maxKgT } } desde rows de centerlines */
 function initStdValues(sku, rows) {
   const map = {};
@@ -331,8 +344,12 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
     const headers = ["SKU", "Producto", "Punto", "Tipo", "Min kg/t", "Std kg/t", "Máx kg/t"];
     const dataRows = [];
 
-    // Convierte string a número para que Excel muestre el separador decimal local
-    const toNum = (s) => { const n = parseFloat(String(s ?? "").trim().replace(",", ".")); return isNaN(n) ? "" : n; };
+    // Convierte string a número válido para Excel; descarta valores fuera de rango (corruptos)
+    const toNum = (s) => {
+      const n = parseFloat(String(s ?? "").trim().replace(",", "."));
+      if (isNaN(n) || Math.abs(n) > 10000) return "";
+      return n;
+    };
 
     SKU_LIST.forEach(sku => {
       // Combos estándar con valores actuales
@@ -403,51 +420,88 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
     e.target.value = "";
     setImporting(true);
     try {
-      const XLSX    = await import("xlsx");
-      const buf     = await file.arrayBuffer();
-      const wb      = XLSX.read(buf, { type: "array" });
-      const ws      = wb.Sheets[wb.SheetNames[0]];
-      const rows    = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      const XLSX = await import("xlsx");
+      const buf  = await file.arrayBuffer();
+      const wb   = XLSX.read(buf, { type: "array" });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
 
-      // Fila 0 = encabezados → saltar
-      const dataRows = rows.slice(1).filter(r => r[0] && r[1] && r[2]);
+      // Lectura DUAL: raw:true da el número interno IEEE 754 (preciso pero puede ser un entero
+      // grande si la celda tiene formato especial); raw:false da el texto mostrado en pantalla
+      // (correcto para celdas con formato visual diferente al valor interno).
+      // Para cada celda se elige automáticamente el valor que esté en rango razonable (≤ 1000 kg/t).
+      const rowsRaw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: true  });
+      const rowsFmt = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
 
-      const newStd    = {};
-      SKU_LIST.forEach(s => { newStd[s] = { ...(allStd[s] || {}) }; });
-      const newCustom = {};
-      SKU_LIST.forEach(s => { newCustom[s] = [...(allCustom[s] || [])]; });
-
-      // Normaliza decimales: coma → punto. Si SheetJS ya leyó número JS, String() da punto.
-      const normNum = (v) => String(v ?? "").trim().replace(",", ".");
       // Normaliza nombre: sin guiones bajos, sin mayúsculas, sin espacios extra
-      const norm    = (s) => String(s ?? "").replace(/_/g, " ").toLowerCase().trim();
+      const norm = (s) => String(s ?? "").replace(/_/g, " ").toLowerCase().trim();
 
-      let loaded = 0, skipped = 0;
+      // Normaliza separadores decimales/miles (europeo y anglosajón)
+      const normNum = (v) => {
+        const s = String(v ?? "").trim();
+        const lastDot   = s.lastIndexOf(".");
+        const lastComma = s.lastIndexOf(",");
+        if (lastComma > lastDot)   return s.replace(/\./g, "").replace(",", ".");
+        if (lastDot   > lastComma) return s.replace(/,/g, "");
+        return s;
+      };
 
-      dataRows.forEach(row => {
+      // Elige el valor más confiable entre la lectura raw y la formateada.
+      // Preferencia: raw (más preciso) si está en rango; sino fmt; sino "" (descartado).
+      const MAX_KGTON = 1000;
+      const readNum = (rv, fv) => {
+        const r = parseFloat(normNum(rv));
+        const f = parseFloat(normNum(fv));
+        const rOk = !isNaN(r) && r >= 0 && r <= MAX_KGTON;
+        const fOk = !isNaN(f) && f >= 0 && f <= MAX_KGTON;
+        if (rOk) return normNum(rv);  // raw en rango → más preciso
+        if (fOk) return normNum(fv);  // raw fuera de rango pero fmt ok → auto-corrección
+        return "";                     // ambos fuera de rango → descartar
+      };
+
+      const newStd = {};
+      SKU_LIST.forEach(s => { newStd[s] = { ...(allStd[s] || {}) }; });
+
+      // Al inicializar newCustom, filtra filas que en realidad son combos estándar
+      const comboNorms = new Set(COMBOS_DOSIS.map(c => `${norm(c.producto)}|${norm(c.punto)}`));
+      const newCustom  = {};
+      SKU_LIST.forEach(s => {
+        newCustom[s] = (allCustom[s] || []).filter(r =>
+          !comboNorms.has(`${norm(r.producto)}|${norm(r.punto)}`)
+        );
+      });
+
+      let loaded = 0, skipped = 0, corrected = 0;
+
+      rowsRaw.slice(1).forEach((row, i) => {
+        if (!row[0] || !row[1] || !row[2]) return;
+        const fmtRow      = rowsFmt[i + 1] || [];
         const skuRaw      = String(row[0] ?? "").trim();
         const productoRaw = String(row[1] ?? "").trim();
         const puntoRaw    = String(row[2] ?? "").trim();
-        const minKgT      = normNum(row[4]);
-        const stdKgT      = normNum(row[5]);
-        const maxKgT      = normNum(row[6]);
 
         if (!SKU_LIST.includes(skuRaw)) { skipped++; return; }
+
+        // Para cada campo: usa readNum (dual-read) y detecta si hubo auto-corrección
+        const rawR = parseFloat(normNum(row[4])), rawS = parseFloat(normNum(row[5])), rawX = parseFloat(normNum(row[6]));
+        const minKgT = readNum(row[4], fmtRow[4]);
+        const stdKgT = readNum(row[5], fmtRow[5]);
+        const maxKgT = readNum(row[6], fmtRow[6]);
+
+        // Cuenta correcciones (cuando raw estaba fuera de rango y se usó el valor formateado)
+        const wasOutOfRange = (raw) => !isNaN(raw) && (raw < 0 || raw > MAX_KGTON);
+        if (wasOutOfRange(rawR) || wasOutOfRange(rawS) || wasOutOfRange(rawX)) corrected++;
 
         const v = { minKgT, stdKgT, maxKgT };
 
         // Busca en COMBOS_DOSIS con comparación normalizada
-        // (resuelve inconsistencia de casing: EcoFix_102 en PRODUCTOS_DOSIS vs Ecofix_102 en COMBOS_DOSIS)
         const matchCombo = COMBOS_DOSIS.find(c =>
           norm(c.producto) === norm(productoRaw) &&
           norm(c.punto)    === norm(puntoRaw)
         );
 
         if (matchCombo) {
-          // Usa la key canónica de COMBOS_DOSIS para que coincida con allStd
           newStd[skuRaw][`${matchCombo.producto}|${matchCombo.punto}`] = v;
         } else {
-          // Fila personalizada: usa nombre canónico de PRODUCTOS_DOSIS si existe
           const producto = PRODUCTOS_DOSIS.find(p => norm(p) === norm(productoRaw)) ?? productoRaw;
           const punto    = puntoRaw;
           const existIdx = newCustom[skuRaw].findIndex(r =>
@@ -469,7 +523,9 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       setAllCustom(newCustom);
       showToast(
         loaded > 0
-          ? `✅ ${loaded} filas importadas${skipped ? ` · ${skipped} ignoradas (SKU inválido)` : ""}`
+          ? `✅ ${loaded} filas importadas` +
+            (corrected ? ` · ${corrected} valores auto-corregidos` : "") +
+            (skipped   ? ` · ${skipped} ignoradas (SKU inválido)` : "")
           : "⚠️ No se encontraron filas válidas en el archivo"
       );
     } catch (err) {

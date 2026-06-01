@@ -85,13 +85,37 @@ export async function fetchUsuarios() {
       const s = String(v ?? "").toLowerCase().trim();
       return s === "true" || s === "verdadero" || s === "1" || s === "sí" || s === "si";
     };
+    // IDs de sección tal como aparecen en las columnas de la hoja Usuarios
+    const SECTION_KEYS = ["mp3", "mp3b", "clar", "mp12", "eflu"];
+
+    const buildSecciones = (u) => {
+      // 1. Si el Apps Script ya devuelve un objeto anidado NO vacío, úsalo
+      const nested = u.secciones ?? u.Secciones;
+      if (nested && typeof nested === "object" && !Array.isArray(nested) && Object.keys(nested).length > 0) {
+        const out = {};
+        Object.entries(nested).forEach(([k, v]) => { out[k] = parseBool(v); });
+        return out;
+      }
+      // 2. Construye desde columnas planas (mp3, mp3b, clar, mp12, eflu)
+      //    Cubre el caso más común: Apps Script devuelve columnas individuales.
+      const out = {};
+      SECTION_KEYS.forEach(k => {
+        // Tolera: mp3 / MP3 — la clave puede venir en cualquier casing
+        const val = u[k] !== undefined ? u[k]
+                  : u[k.toUpperCase()] !== undefined ? u[k.toUpperCase()]
+                  : undefined;
+        if (val !== undefined && val !== null && val !== "") out[k] = parseBool(val);
+      });
+      return out;
+    };
+
     return raw
       .filter(u => u && typeof u === "object")
       .map(u => ({
-        nombre:    u.nombre    ?? u.Nombre    ?? u.name      ?? u.Name      ?? "",
+        nombre:    u.nombre ?? u.Nombre ?? u.name ?? u.Name ?? "",
         pin:       String(u.pin ?? u.Pin ?? u.PIN ?? ""),
         admin:     parseBool(u.admin ?? u.Admin ?? u.isAdmin),
-        secciones: u.secciones ?? u.Secciones ?? {},
+        secciones: buildSecciones(u),
       }))
       .filter(u => u.nombre !== "");
   } catch { return []; }

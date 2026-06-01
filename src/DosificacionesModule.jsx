@@ -33,6 +33,21 @@ function normStr(s) {
   return String(s || "").toLowerCase().replace(/[_\-\s]+/g, " ").trim();
 }
 
+/**
+ * Formatea un valor numérico a 2 cifras significativas contando desde el primer
+ * dígito distinto de cero.  Ej: 0.007716 → "0.0077" · 1.2345 → "1.2" · 12.34 → "12"
+ */
+function fmt2sig(val) {
+  if (val === "" || val === null || val === undefined) return "—";
+  const n = parseFloat(String(val).replace(",", "."));
+  if (isNaN(n)) return "—";
+  if (n === 0)  return "0";
+  // Valores > 1 000 kg/t son datos corruptos en Sheets (enteros IEEE 754 mal importados)
+  if (Math.abs(n) > 1000) return "—";
+  // toPrecision(2) da 2 cifras sig; parseFloat elimina ceros finales y notación científica innecesaria
+  return parseFloat(n.toPrecision(2)).toString();
+}
+
 /** Filtra filas del centerline que coincidan con SKU + producto (fuzzy) + punto (fuzzy) */
 function matchCL(clRows, sku, producto, punto) {
   if (!sku || !producto || !clRows?.length) return [];
@@ -94,13 +109,13 @@ function CLReference({ clMatches, flujo, tipo, sku }) {
               {[["Mín", r.minLH], ["Std", r.stdLH], ["Máx", r.maxLH]].map(([lbl, val]) => (
                 <div key={lbl} style={{ background: "#fff", borderRadius: 6, padding: "4px 6px", textAlign: "center" }}>
                   <div style={{ fontSize: 9, color: "#64748B" }}>{lbl} (l/h)</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B" }}>{val || "—"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B" }}>{fmt2sig(val)}</div>
                 </div>
               ))}
               {r.stdKgT && [["Mín kg/t", r.minKgT], ["Std kg/t", r.stdKgT], ["Máx kg/t", r.maxKgT]].map(([lbl, val]) => (
                 <div key={lbl} style={{ background: "#F0F9FF", borderRadius: 6, padding: "4px 6px", textAlign: "center" }}>
                   <div style={{ fontSize: 9, color: "#0369A1" }}>{lbl}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#0C4A6E" }}>{val || "—"}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#0C4A6E" }}>{fmt2sig(val)}</div>
                 </div>
               ))}
             </div>
@@ -404,7 +419,7 @@ function CenterlineView({ centerlines, sku }) {
                   </div>
                   {[r.minLH, r.stdLH, r.maxLH, r.minKgT, r.stdKgT, r.maxKgT].map((val, vi) => (
                     <div key={vi} style={{ textAlign: "center", fontSize: 12, fontWeight: vi === 1 || vi === 4 ? 700 : 400, color: vi === 1 || vi === 4 ? "#1A2744" : "#64748B" }}>
-                      {val || "—"}
+                      {fmt2sig(val)}
                     </div>
                   ))}
                 </div>

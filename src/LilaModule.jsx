@@ -481,7 +481,7 @@ export default function LilaModule({ usuario, showToast }) {
   }, [version, turno, fecha, obsGen, vals]);
 
   const filtrarPorPermiso = (secs) => {
-    if (!usuario || usuario.admin) return secs;
+    if (!usuario) return secs;
     return secs.filter(sec => usuario.secciones?.[sec.id] === true);
   };
   const baseSectores    = version === "lila2" ? getSectoresLila2() : SECTORES;
