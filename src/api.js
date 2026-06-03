@@ -207,7 +207,20 @@ export async function fetchCenterlines() {
   try {
     const res  = await fetch(APPS_SCRIPT_URL + "?action=getCenterlines", { redirect: "follow" });
     const data = await res.json();
-    const result = { rows: data.rows || [], skus: data.skus || [] };
+    // El Apps Script puede devolver el valor interno IEEE 754 de celdas con formato especial
+    // (ej: 0,175 → 46143…). Valores > 1 000 kg/t son siempre corruptos en este contexto.
+    const sanitizeField = (v) => {
+      if (v === "" || v === null || v === undefined) return "";
+      const n = parseFloat(String(v));
+      return (!isNaN(n) && Math.abs(n) > 1000) ? "" : String(v);
+    };
+    const rows = (data.rows || []).map(r => ({
+      ...r,
+      minKgT: sanitizeField(r.minKgT),
+      stdKgT: sanitizeField(r.stdKgT),
+      maxKgT: sanitizeField(r.maxKgT),
+    }));
+    const result = { rows, skus: data.skus || [] };
     localStorage.setItem(CL_CACHE_KEY, JSON.stringify({ data: result, exp: Date.now() + CL_CACHE_TTL }));
     return result;
   } catch { return { rows: [], skus: [] }; }
