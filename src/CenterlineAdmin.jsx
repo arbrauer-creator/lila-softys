@@ -28,16 +28,23 @@ const GROUP_PALETTE = [
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
 /**
- * Limpia un valor kg/t: devuelve "" si es NaN o claramente fuera de rango
- * (> 10 000 indica un número corrupto de importaciones anteriores con SheetJS).
+ * Limpia un valor kg/t: devuelve "" si es NaN o claramente fuera de rango.
  * Rango real de dosificación química: 0,001 – ~100 kg/t.
+ * Umbral: > 1 000 → corrupto (entero IEEE 754 mal importado).
  */
 function sanitizeKgT(v) {
   if (v === "" || v === null || v === undefined) return "";
   const n = parseFloat(String(v).replace(",", "."));
   if (isNaN(n)) return "";
-  if (Math.abs(n) > 10000) return ""; // valor claramente corrupto → descartar
+  if (Math.abs(n) > 1000) return ""; // valor claramente corrupto → descartar al guardar
   return String(v);
+}
+
+/** Devuelve true si el valor es un número corrupto (> 1 000 kg/t). */
+function isCorruptVal(v) {
+  if (v === "" || v === null || v === undefined) return false;
+  const n = parseFloat(String(v).replace(",", "."));
+  return !isNaN(n) && Math.abs(n) > 1000;
 }
 
 /** Mapa { "prod|punto": { minKgT, stdKgT, maxKgT } } desde rows de centerlines */
@@ -129,21 +136,34 @@ function StdRow({ producto, punto, tipo, v, onChange, firstInGroup, groupSize, g
           {tipo}
         </span>
       </td>
-      {["minKgT", "stdKgT", "maxKgT"].map(field => (
-        <td key={field} style={{ padding: "3px 4px", borderBottom: "1px solid #F1F5F9", borderTop: sepTop }}>
-          <input
-            type="number" step="0.001" min="0" placeholder="—"
-            value={(v && v[field]) || ""}
-            onChange={e => onChange(field, e.target.value)}
-            style={numInp(tiene)}
-            onFocus={e => { e.target.style.border = "1.5px solid #3B82F6"; e.target.style.background = "#fff"; }}
-            onBlur={e => {
-              e.target.style.border = "1.5px solid " + (tiene ? "#BBF7D0" : "#E2E8F0");
-              e.target.style.background = tiene ? "#F0FDF4" : "#F8FAFC";
-            }}
-          />
-        </td>
-      ))}
+      {["minKgT", "stdKgT", "maxKgT"].map(field => {
+        const val     = (v && v[field]) ?? "";
+        const corrupt = isCorruptVal(val);
+        return (
+          <td key={field} style={{ padding: "3px 4px", borderBottom: "1px solid #F1F5F9", borderTop: sepTop }}>
+            <input
+              type="number" step="0.001" min="0" placeholder="—"
+              value={val}
+              onChange={e => onChange(field, e.target.value)}
+              title={corrupt ? "⚠️ Valor corrupto (>1000 kg/t) — ingresa el valor correcto y guarda" : undefined}
+              style={corrupt
+                ? { ...numInp(false), border: "1.5px solid #FCA5A5", background: "#FEF2F2", color: "#DC2626" }
+                : numInp(tiene)}
+              onFocus={e => {
+                e.target.style.border = "1.5px solid #3B82F6";
+                e.target.style.background = "#fff";
+                e.target.style.color = "#1E293B";
+              }}
+              onBlur={e => {
+                const c = isCorruptVal(e.target.value);
+                e.target.style.border    = c ? "1.5px solid #FCA5A5" : "1.5px solid " + (tiene ? "#BBF7D0" : "#E2E8F0");
+                e.target.style.background = c ? "#FEF2F2" : (tiene ? "#F0FDF4" : "#F8FAFC");
+                e.target.style.color      = c ? "#DC2626" : "#1E293B";
+              }}
+            />
+          </td>
+        );
+      })}
       <td style={{ width: 32, borderBottom: "1px solid #F1F5F9", borderTop: sepTop }} />
     </tr>
   );
@@ -544,17 +564,25 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
       const stdM  = allStd[sku]    || {};
       const custR = allCustom[sku] || [];
 
-      // Combos estándar con datos
+      // Combos estándar con datos (sanitize descarta corruptos > 1000 kg/t)
       COMBOS_DOSIS.forEach(({ producto, punto }) => {
         const v = stdM[`${producto}|${punto}`];
         if (!hasData(v)) return;
-        allRows.push({ sku, producto, punto, tipo: getTipo(producto, punto), minLH: "", stdLH: "", maxLH: "", ...v, comentario });
+        const minKgT = sanitizeKgT(v.minKgT);
+        const stdKgT = sanitizeKgT(v.stdKgT);
+        const maxKgT = sanitizeKgT(v.maxKgT);
+        if (!minKgT && !stdKgT && !maxKgT) return; // todos corruptos → no guardar fila
+        allRows.push({ sku, producto, punto, tipo: getTipo(producto, punto), minLH: "", stdLH: "", maxLH: "", minKgT, stdKgT, maxKgT, comentario });
       });
 
-      // Filas custom con datos
+      // Filas custom con datos (sanitize descarta corruptos > 1000 kg/t)
       custR.forEach(r => {
         if (!r.producto || !r.punto || !hasData(r)) return;
-        allRows.push({ sku, producto: r.producto, punto: r.punto, tipo: getTipo(r.producto, r.punto), minLH: "", stdLH: "", maxLH: "", minKgT: r.minKgT, stdKgT: r.stdKgT, maxKgT: r.maxKgT, comentario });
+        const minKgT = sanitizeKgT(r.minKgT);
+        const stdKgT = sanitizeKgT(r.stdKgT);
+        const maxKgT = sanitizeKgT(r.maxKgT);
+        if (!minKgT && !stdKgT && !maxKgT) return;
+        allRows.push({ sku, producto: r.producto, punto: r.punto, tipo: getTipo(r.producto, r.punto), minLH: "", stdLH: "", maxLH: "", minKgT, stdKgT, maxKgT, comentario });
       });
     });
 
@@ -594,6 +622,15 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
     Object.values(allStd[sku] || {}).filter(hasData).length +
     (allCustom[sku] || []).filter(r => r.producto && r.punto && hasData(r)).length;
 
+  const countCorrupt = (sku) => {
+    const fields = ["minKgT", "stdKgT", "maxKgT"];
+    const fromStd = Object.values(allStd[sku] || {})
+      .reduce((s, v) => s + fields.filter(f => isCorruptVal(v?.[f])).length, 0);
+    const fromCust = (allCustom[sku] || [])
+      .reduce((s, r) => s + fields.filter(f => isCorruptVal(r?.[f])).length, 0);
+    return fromStd + fromCust;
+  };
+
   // Agrupar COMBOS_DOSIS por producto (manteniendo orden original)
   const byProduct = [];
   const seen = new Set();
@@ -612,8 +649,13 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
         <div style={{ padding: "16px 20px 14px", borderBottom: "1px solid #F1F5F9", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>📏 Gestión de Centerlines</div>
-            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>
-              {COMBOS_DOSIS.length} combinaciones · {countFilled(activeSku)} con datos · SKU {activeSku}
+            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span>{COMBOS_DOSIS.length} combinaciones · {countFilled(activeSku)} con datos · SKU {activeSku}</span>
+              {countCorrupt(activeSku) > 0 && (
+                <span style={{ background: "#FEF2F2", color: "#DC2626", fontWeight: 700, fontSize: 10, padding: "2px 8px", borderRadius: 10, border: "1px solid #FCA5A5" }}>
+                  ⚠️ {countCorrupt(activeSku)} valores corruptos — corrígelos y guarda
+                </span>
+              )}
             </div>
           </div>
           <button onClick={onClose}
