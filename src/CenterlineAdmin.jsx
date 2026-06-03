@@ -571,9 +571,11 @@ export default function CenterlineAdmin({ centerlines, onClose, onSaved, showToa
         setSaving(false);
         return;
       }
+      // Invalida caché y recarga desde la API para reflejar el estado real de la hoja
+      // (incluye valores l/h y todos los SKUs, no solo los editados ahora)
       invalidateCenterlineCache();
-      const skus = [...new Set(allRows.map(r => r.sku))].filter(Boolean);
-      onSaved({ rows: allRows, skus });
+      const freshCL = await fetchCenterlines();
+      onSaved(freshCL?.rows?.length ? freshCL : { rows: allRows, skus: [...new Set(allRows.map(r => r.sku))].filter(Boolean) });
       showToast(`✅ ${allRows.length} filas guardadas correctamente`);
       setSaving(false);
       onClose();
